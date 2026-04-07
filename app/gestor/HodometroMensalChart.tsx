@@ -15,7 +15,7 @@ type ChartItem = {
   vehicle_id: string
   placa: string
   modelo: string | null
-  odometer: number
+  km_rodado: number
 }
 
 type Props = {
@@ -26,11 +26,11 @@ function formatKm(value: number) {
   return new Intl.NumberFormat('pt-BR').format(value)
 }
 
-export default function HodometroTotalChart({ data }: Props) {
+export default function HodometroMensalChart({ data }: Props) {
   if (!data.length) {
     return (
       <div className="rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-500">
-        Nenhuma leitura de hodômetro encontrada.
+        Ainda não há dados suficientes para o gráfico mensal.
       </div>
     )
   }
@@ -49,14 +49,14 @@ export default function HodometroTotalChart({ data }: Props) {
           />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
-            formatter={(value: any) => [`${formatKm(Number(value))} km`, 'Hodômetro total']}
+            formatter={(value: any) => [`${formatKm(Number(value))} km`, 'Rodado no mês']}
             labelFormatter={(label) => `Veículo: ${label}`}
           />
-          <Bar dataKey="odometer" radius={[6, 6, 0, 0]}>
+          <Bar dataKey="km_rodado" radius={[6, 6, 0, 0]}>
             {data.map((entry, index) => (
               <Cell
-                key={`cell-total-${entry.vehicle_id}`}
-                fill={index === 0 ? '#2f6eea' : '#94a3b8'}
+                key={`cell-month-${entry.vehicle_id}`}
+                fill={index === 0 ? '#f59e0b' : '#94a3b8'}
               />
             ))}
           </Bar>
