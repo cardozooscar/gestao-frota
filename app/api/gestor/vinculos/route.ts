@@ -107,3 +107,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 })
   }
 }
+
+// NOVA FUNÇÃO PARA DESVINCULAR
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const { assignmentId } = body
+
+    if (!assignmentId) {
+      return NextResponse.json({ error: 'ID do vínculo é obrigatório.' }, { status: 400 })
+    }
+
+    const now = new Date().toISOString()
+
+    const { error } = await supabaseAdmin
+      .from('vehicle_assignments')
+      .update({ ended_at: now })
+      .eq('id', assignmentId)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 })
+  }
+}

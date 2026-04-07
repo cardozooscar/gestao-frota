@@ -123,6 +123,36 @@ export default function VinculosPage() {
     }
   }
 
+  // FUNÇÃO PARA DESVINCULAR
+  async function handleDesvincular(assignmentId: string) {
+    if (!confirm('Deseja realmente desvincular este veículo do técnico?')) return
+
+    setErro('')
+    setSucesso('')
+    setSalvando(true)
+
+    try {
+      const response = await fetch('/api/gestor/vinculos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignmentId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao desvincular')
+      }
+
+      setSucesso('Veículo desvinculado com sucesso.')
+      await carregarDados()
+    } catch (err: any) {
+      setErro(err.message || 'Erro ao desvincular')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
       <div className="mx-auto max-w-7xl">
@@ -136,6 +166,7 @@ export default function VinculosPage() {
           </p>
         </div>
 
+        {/* Formulário de Novo Vínculo */}
         <div className="mb-6 rounded-md border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-6 py-4">
             <h2 className="text-2xl font-bold text-slate-800">Novo vínculo</h2>
@@ -179,7 +210,7 @@ export default function VinculosPage() {
                 disabled={salvando}
                 className="rounded-md bg-[#2f6eea] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#255ed0] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {salvando ? 'SALVANDO...' : 'VINCULAR VEÍCULO'}
+                {salvando ? 'PROCESSANDO...' : 'VINCULAR VEÍCULO'}
               </button>
             </form>
 
@@ -197,6 +228,7 @@ export default function VinculosPage() {
           </div>
         </div>
 
+        {/* Listagem de Vínculos Ativos */}
         <div className="rounded-md border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -228,7 +260,7 @@ export default function VinculosPage() {
                     className="rounded-md border border-slate-200 bg-[#fafbfd] p-5 transition hover:border-[#2f6eea] hover:shadow-sm"
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-xl font-bold text-slate-800">
                           {item.profiles?.nome || 'Técnico não identificado'}
                         </h3>
@@ -253,16 +285,27 @@ export default function VinculosPage() {
                             {new Date(item.started_at).toLocaleString('pt-BR')}
                           </span>
                         </p>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-[#35c6cf] px-3 py-1 text-xs font-bold text-white">
+                            Técnico ativo
+                          </span>
+
+                          <span className="rounded-full bg-[#4a90e2] px-3 py-1 text-xs font-bold text-white">
+                            Veículo liberado
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-[#35c6cf] px-3 py-1 text-xs font-bold text-white">
-                          Técnico ativo
-                        </span>
-
-                        <span className="rounded-full bg-[#4a90e2] px-3 py-1 text-xs font-bold text-white">
-                          Veículo liberado
-                        </span>
+                      {/* BOTÃO DE DESVINCULAR */}
+                      <div className="flex flex-shrink-0 flex-col gap-2">
+                         <button
+                          onClick={() => handleDesvincular(item.id)}
+                          disabled={salvando}
+                          className="rounded-md border border-red-500 px-4 py-2 text-xs font-bold text-red-500 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
+                        >
+                          DESVINCULAR
+                        </button>
                       </div>
                     </div>
                   </div>
