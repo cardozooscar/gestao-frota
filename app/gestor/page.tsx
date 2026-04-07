@@ -206,8 +206,8 @@ export default async function GestorHomePage() {
         return null
       }
 
-      const firstOdometer = ordered[0].odometer
-      const lastOdometer = ordered[ordered.length - 1].odometer
+      const firstOdometer = ordered[0].odometer ?? 0
+      const lastOdometer = ordered[ordered.length - 1].odometer ?? 0
       const kmRodado = Math.max(0, lastOdometer - firstOdometer)
 
       return {
