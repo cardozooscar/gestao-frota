@@ -53,7 +53,7 @@ export default function HodometroChart({ data }: Props) {
           />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
-            formatter={(value: number) => [`${formatKm(value)} km`, 'Rodado no mês']}
+            formatter={(value: any) => [`${formatKm(Number(value))} km`, 'Rodado no mês']}
             labelFormatter={(label) => `Veículo: ${label}`}
           />
           <Bar dataKey="km_rodado" radius={[6, 6, 0, 0]}>
