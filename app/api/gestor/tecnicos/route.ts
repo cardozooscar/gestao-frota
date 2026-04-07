@@ -15,10 +15,14 @@ function normalizeUsername(nome: string) {
 async function generateAvailableUsername(nome: string) {
   const base = normalizeUsername(nome)
 
-  const { data: existing } = await supabaseAdmin
+  const { data: existing, error } = await supabaseAdmin
     .from('profiles')
     .select('username')
     .ilike('username', `${base}%`)
+
+  if (error) {
+    throw new Error(error.message)
+  }
 
   if (!existing || existing.length === 0) {
     return base
@@ -42,57 +46,82 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, nome, username, email, role, approved, created_at')
+      .select('id, nome, username, email, role, approved, active, created_at')
       .eq('role', 'tecnico')
       .order('nome', { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ data: data || [] })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 })
+    return NextResponse.json(
+      { error: err?.message || 'Erro interno ao listar técnicos.' },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, email } = body
+    const nome = String(body?.nome || '').trim()
+    const senha = String(body?.senha || '').trim()
 
-    if (!nome || !email) {
-      return NextResponse.json({ error: 'Nome e e-mail são obrigatórios.' }, { status: 400 })
+    if (!nome) {
+      return NextResponse.json(
+        { error: 'Nome é obrigatório.' },
+        { status: 400 }
+      )
+    }
+
+    if (!senha || senha.length < 6) {
+      return NextResponse.json(
+        { error: 'A senha deve ter pelo menos 6 caracteres.' },
+        { status: 400 }
+      )
     }
 
     const username = await generateAvailableUsername(nome)
-    const senhaPadrao = 'Fibranet1020'
+    const email = `${username}@frota.local`
 
-    const { data: createdUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: senhaPadrao,
-      email_confirm: true,
-    })
+    const { data: createdUser, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: senha,
+        email_confirm: true,
+      })
 
     if (authError || !createdUser.user) {
       return NextResponse.json(
-        { error: authError?.message || 'Não foi possível criar o usuário.' },
+        { error: authError?.message || 'Erro ao criar usuário no Auth.' },
         { status: 500 }
       )
     }
 
-    const { error: profileError } = await supabaseAdmin.from('profiles').insert({
-      id: createdUser.user.id,
-      nome,
-      username,
-      email,
-      role: 'tecnico',
-      approved: true,
-    })
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: createdUser.user.id,
+        nome,
+        username,
+        email,
+        role: 'tecnico',
+        approved: true,
+        active: true,
+      })
 
     if (profileError) {
       await supabaseAdmin.auth.admin.deleteUser(createdUser.user.id)
-      return NextResponse.json({ error: profileError.message }, { status: 500 })
+
+      return NextResponse.json(
+        { error: profileError.message },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
@@ -100,12 +129,14 @@ export async function POST(req: NextRequest) {
       data: {
         id: createdUser.user.id,
         nome,
-        email,
         username,
-        senhaPadrao,
+        email,
       },
     })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 })
+    return NextResponse.json(
+      { error: err?.message || 'Erro interno ao cadastrar técnico.' },
+      { status: 500 }
+    )
   }
 }

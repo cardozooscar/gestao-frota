@@ -19,52 +19,94 @@ export default function LoginPage() {
 
     try {
       const loginNormalizado = login.trim().toLowerCase()
+      const senhaNormalizada = senha.trim()
 
-      let emailParaLogin = ''
+      if (!loginNormalizado || !senhaNormalizada) {
+        throw new Error('Preencha usuário/e-mail e senha.')
+      }
 
-      if (loginNormalizado.includes('@')) {
-        emailParaLogin = loginNormalizado
-      } else {
-        const { data: profile, error: profileLookupError } = await supabase
-          .from('profiles')
-          .select('id, email, role, approved')
-          .eq('username', loginNormalizado)
-          .maybeSingle()
+      const resolveResponse = await fetch('/api/gestor/auth/resolve-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ login: loginNormalizado }),
+      })
 
-        if (profileLookupError) throw new Error('Erro ao localizar usuário.')
-        if (!profile) throw new Error('Usuário não encontrado.')
+      const contentType = resolveResponse.headers.get('content-type') || ''
 
-        if (profile.role === 'tecnico' && !profile.approved) {
-          throw new Error('Seu cadastro ainda não foi aprovado pelo gestor.')
-        }
+      if (!contentType.includes('application/json')) {
+        const textoErro = await resolveResponse.text()
+        console.error('Resposta não-JSON da API /api/gestor/auth/resolve-login:', textoErro)
+        throw new Error('A rota interna de login não respondeu corretamente.')
+      }
 
-        emailParaLogin = profile.email
+      const resolveResult = await resolveResponse.json()
+
+      if (!resolveResponse.ok || !resolveResult?.data?.email) {
+        throw new Error(resolveResult?.error || 'Não foi possível localizar o usuário.')
+      }
+
+      const resolvedUser = resolveResult.data
+      const emailResolvido = String(resolvedUser.email).trim().toLowerCase()
+
+      if (!resolvedUser.active) {
+        throw new Error('Usuário desativado. Procure o administrador.')
+      }
+
+      if (resolvedUser.role === 'tecnico' && !resolvedUser.approved) {
+        throw new Error('Seu cadastro ainda não foi aprovado pelo gestor.')
       }
 
       const { data: loginData, error: loginError } =
         await supabase.auth.signInWithPassword({
-          email: emailParaLogin,
-          password: senha,
+          email: emailResolvido,
+          password: senhaNormalizada,
         })
 
-      if (loginError) throw new Error('Usuário ou senha inválidos.')
-      if (!loginData.user) throw new Error('Falha ao autenticar usuário.')
+      if (loginError) {
+        throw new Error(
+          `Usuário ou senha inválidos.\nE-mail resolvido: ${emailResolvido}\nDetalhe: ${loginError.message}`
+        )
+      }
 
-      const { data: profileFinal } = await supabase
+      if (!loginData.user) {
+        throw new Error('Falha ao autenticar usuário.')
+      }
+
+      const { data: profileFinal, error: profileFinalError } = await supabase
         .from('profiles')
-        .select('role, approved')
+        .select('role, approved, active')
         .eq('id', loginData.user.id)
         .single()
 
+      if (profileFinalError) {
+        throw new Error(`Erro ao carregar perfil: ${profileFinalError.message}`)
+      }
+
+      if (!profileFinal) {
+        throw new Error('Perfil do usuário não encontrado.')
+      }
+
+      if (!profileFinal.active) {
+        await supabase.auth.signOut()
+        throw new Error('Usuário desativado.')
+      }
+
+      if (profileFinal.role === 'tecnico' && !profileFinal.approved) {
+        await supabase.auth.signOut()
+        throw new Error('Seu cadastro ainda não foi aprovado.')
+      }
+
       if (profileFinal.role === 'admin' || profileFinal.role === 'supervisor') {
-  router.push('/gestor')
-} else if (profileFinal.role === 'tecnico') {
-  router.push('/tecnico')
-} else {
-  throw new Error('Perfil inválido.')
-}
+        router.push('/gestor')
+      } else if (profileFinal.role === 'tecnico') {
+        router.push('/tecnico')
+      } else {
+        throw new Error('Perfil inválido.')
+      }
     } catch (err: any) {
-      setErro(err.message || 'Erro ao fazer login.')
+      setErro(err?.message || 'Erro ao fazer login.')
     } finally {
       setCarregando(false)
     }
@@ -74,8 +116,6 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center bg-[#02052b] text-white px-4">
       <div className="w-full max-w-md">
         <div className="rounded-[28px] border border-[#1d2466] bg-[#070b3f] p-8 shadow-2xl">
-          
-          {/* LOGO */}
           <div className="text-center mb-8">
             <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-xl border border-[#1d2466] bg-white/5 p-2">
               <img
@@ -94,7 +134,6 @@ export default function LoginPage() {
             </h1>
           </div>
 
-          {/* FORM */}
           <form onSubmit={handleLogin} className="space-y-4">
             <input
               type="text"
@@ -103,6 +142,7 @@ export default function LoginPage() {
               onChange={(e) => setLogin(e.target.value)}
               className="w-full rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none focus:border-[#2f6eea]"
               required
+              autoComplete="username"
             />
 
             <input
@@ -112,10 +152,11 @@ export default function LoginPage() {
               onChange={(e) => setSenha(e.target.value)}
               className="w-full rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none focus:border-[#2f6eea]"
               required
+              autoComplete="current-password"
             />
 
             {erro && (
-              <div className="rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+              <div className="rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300 text-sm whitespace-pre-wrap">
                 {erro}
               </div>
             )}
@@ -123,7 +164,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={carregando}
-              className="w-full rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] py-3 font-bold transition"
+              className="w-full rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] py-3 font-bold transition disabled:opacity-60"
             >
               {carregando ? 'ENTRANDO...' : 'ENTRAR'}
             </button>

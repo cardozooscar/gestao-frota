@@ -6,6 +6,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from('vehicles')
       .select('*')
+      .eq('is_active', true)
       .order('placa', { ascending: true })
 
     if (error) {
@@ -21,10 +22,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { placa, modelo, ownershipType } = body
+    const { placa, modelo, ownershipType, imageUrl } = body
 
     if (!placa || !modelo || !ownershipType) {
-      return NextResponse.json({ error: 'Placa, modelo e tipo são obrigatórios.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Placa, modelo e tipo são obrigatórios.' },
+        { status: 400 }
+      )
     }
 
     const { data, error } = await supabaseAdmin
@@ -33,7 +37,10 @@ export async function POST(req: NextRequest) {
         placa: placa.trim().toUpperCase(),
         modelo: modelo.trim(),
         ownership_type: ownershipType,
+        image_url: imageUrl?.trim() || null,
         ativo: true,
+        is_active: true,
+        deleted_at: null,
       })
       .select()
       .single()

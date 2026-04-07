@@ -11,6 +11,7 @@ type Tecnico = {
   email: string
   role: string
   approved: boolean
+  active?: boolean
   created_at: string
 }
 
@@ -18,7 +19,7 @@ export default function TecnicosPage() {
   const router = useRouter()
 
   const [nome, setNome] = useState('')
-  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -77,20 +78,31 @@ export default function TecnicosPage() {
       const response = await fetch('/api/gestor/tecnicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email }),
+        body: JSON.stringify({
+          nome,
+          senha,
+        }),
       })
 
-      const result = await response.json()
+      const rawText = await response.text()
+      let result: any = {}
+
+      try {
+        result = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error('A API de técnicos retornou uma resposta inválida.')
+      }
 
       if (!response.ok) {
         throw new Error(result.error || 'Erro ao cadastrar técnico')
       }
 
       setSucesso(
-        `Técnico criado com sucesso. Usuário: ${result.data.username} | Senha padrão: ${result.data.senhaPadrao}`
+        `Técnico criado com sucesso. Usuário: ${result?.data?.username || '-'}`
       )
+
       setNome('')
-      setEmail('')
+      setSenha('')
       await carregarTecnicos()
     } catch (err: any) {
       setErro(err.message || 'Erro ao cadastrar técnico')
@@ -100,92 +112,142 @@ export default function TecnicosPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#02052b] text-white">
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6 mb-6 shadow-2xl">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-slate-400 text-sm uppercase tracking-[0.2em]">Gestão de técnicos</p>
-              <h1 className="text-4xl font-bold mt-2">Cadastro de Técnicos</h1>
-              <p className="text-slate-300 mt-2">
-                Usuário gerado automaticamente no padrão <strong>nome.tecnico</strong>.
-              </p>
-            </div>
+    <main className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
+            Equipe
+          </p>
+          <h1 className="mt-2 text-4xl font-bold text-slate-800">Técnicos</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Cadastre e acompanhe os usuários técnicos da operação.
+          </p>
+        </div>
 
-            <button
-              onClick={() => router.push('/gestor')}
-              className="bg-[#1d2466] hover:bg-[#28318a] rounded-lg px-5 py-3 font-semibold"
-            >
-              Voltar
-            </button>
+        <div className="mb-6 rounded-md border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="text-2xl font-bold text-slate-800">Novo técnico</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              O sistema gera o usuário automaticamente e usa e-mail interno invisível.
+            </p>
+          </div>
+
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <input
+                type="text"
+                placeholder="Nome completo"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
+                required
+              />
+
+              <input
+                type="password"
+                placeholder="Senha inicial"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
+                required
+              />
+
+              <button
+                type="submit"
+                disabled={salvando}
+                className="rounded-md bg-[#2f6eea] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#255ed0] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {salvando ? 'CADASTRANDO...' : 'CADASTRAR TÉCNICO'}
+              </button>
+            </form>
+
+            {erro && (
+              <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {erro}
+              </div>
+            )}
+
+            {sucesso && (
+              <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {sucesso}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Novo técnico</h2>
-
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input
-              type="text"
-              placeholder="Nome completo"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none"
-              required
-            />
-
-            <input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none"
-              required
-            />
-
-            <button
-              type="submit"
-              disabled={salvando}
-              className="rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] px-4 py-3 font-bold"
-            >
-              {salvando ? 'CADASTRANDO...' : 'CADASTRAR TÉCNICO'}
-            </button>
-          </form>
-
-          {erro && (
-            <div className="mt-4 rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300">
-              {erro}
+        <div className="rounded-md border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Técnicos cadastrados</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Visualize os usuários técnicos já criados no sistema.
+              </p>
             </div>
-          )}
 
-          {sucesso && (
-            <div className="mt-4 rounded-lg border border-green-500 bg-green-500/10 px-4 py-3 text-green-300">
-              {sucesso}
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {tecnicos.length} técnico(s)
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6">
-          <h2 className="text-2xl font-bold mb-4">Técnicos cadastrados</h2>
+          <div className="p-6">
+            {loading ? (
+              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
+                Carregando técnicos...
+              </div>
+            ) : tecnicos.length === 0 ? (
+              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
+                Nenhum técnico cadastrado.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {tecnicos.map((tecnico) => (
+                  <div
+                    key={tecnico.id}
+                    className="rounded-md border border-slate-200 bg-[#fafbfd] p-5 transition hover:border-[#2f6eea] hover:shadow-sm"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-800">{tecnico.nome}</h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Usuário: <span className="font-semibold text-slate-700">{tecnico.username}</span>
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          E-mail interno: {tecnico.email}
+                        </p>
+                      </div>
 
-          {loading ? (
-            <p>Carregando...</p>
-          ) : tecnicos.length === 0 ? (
-            <p className="text-slate-300">Nenhum técnico cadastrado.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {tecnicos.map((tecnico) => (
-                <div
-                  key={tecnico.id}
-                  className="bg-[#050827] border border-[#1d2466] rounded-2xl p-5"
-                >
-                  <h3 className="text-xl font-semibold">{tecnico.nome}</h3>
-                  <p className="text-slate-300 mt-1">Usuário: {tecnico.username}</p>
-                  <p className="text-slate-400">E-mail: {tecnico.email}</p>
-                </div>
-              ))}
-            </div>
-          )}
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-full bg-[#35c6cf] px-3 py-1 text-xs font-bold text-white">
+                          Técnico
+                        </span>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
+                            tecnico.approved ? 'bg-[#38a96a]' : 'bg-[#f0ad4e]'
+                          }`}
+                        >
+                          {tecnico.approved ? 'Aprovado' : 'Pendente'}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
+                            tecnico.active === false ? 'bg-[#d9534f]' : 'bg-[#4a90e2]'
+                          }`}
+                        >
+                          {tecnico.active === false ? 'Inativo' : 'Ativo'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-500">
+                      Criado em:{' '}
+                      {new Date(tecnico.created_at).toLocaleDateString('pt-BR')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </main>

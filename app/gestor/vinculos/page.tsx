@@ -124,108 +124,152 @@ export default function VinculosPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#02052b] text-white">
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6 mb-6 shadow-2xl">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-slate-400 text-sm uppercase tracking-[0.2em]">Gestão de vínculos</p>
-              <h1 className="text-4xl font-bold mt-2">Veículos por Técnico</h1>
-              <p className="text-slate-300 mt-2">
-                Vincule e troque veículos mantendo o histórico.
-              </p>
-            </div>
+    <main className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
+            Operação
+          </p>
+          <h1 className="mt-2 text-4xl font-bold text-slate-800">Vínculos</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Defina qual veículo está liberado para cada técnico.
+          </p>
+        </div>
 
-            <button
-              onClick={() => router.push('/gestor')}
-              className="bg-[#1d2466] hover:bg-[#28318a] rounded-lg px-5 py-3 font-semibold"
-            >
-              Voltar
-            </button>
+        <div className="mb-6 rounded-md border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="text-2xl font-bold text-slate-800">Novo vínculo</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Ao criar um novo vínculo, o sistema mantém o histórico e atualiza o técnico e o veículo ativos.
+            </p>
+          </div>
+
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <select
+                value={profileId}
+                onChange={(e) => setProfileId(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
+                required
+              >
+                <option value="">Selecione o técnico</option>
+                {tecnicos.map((tecnico) => (
+                  <option key={tecnico.id} value={tecnico.id}>
+                    {tecnico.nome} ({tecnico.username})
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={vehicleId}
+                onChange={(e) => setVehicleId(e.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
+                required
+              >
+                <option value="">Selecione o veículo</option>
+                {vehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.placa} - {vehicle.modelo}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="submit"
+                disabled={salvando}
+                className="rounded-md bg-[#2f6eea] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#255ed0] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {salvando ? 'SALVANDO...' : 'VINCULAR VEÍCULO'}
+              </button>
+            </form>
+
+            {erro && (
+              <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {erro}
+              </div>
+            )}
+
+            {sucesso && (
+              <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {sucesso}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Novo vínculo</h2>
-
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              value={profileId}
-              onChange={(e) => setProfileId(e.target.value)}
-              className="rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none"
-              required
-            >
-              <option value="">Selecione o técnico</option>
-              {tecnicos.map((tecnico) => (
-                <option key={tecnico.id} value={tecnico.id}>
-                  {tecnico.nome} ({tecnico.username})
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={vehicleId}
-              onChange={(e) => setVehicleId(e.target.value)}
-              className="rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none"
-              required
-            >
-              <option value="">Selecione o veículo</option>
-              {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.placa} - {vehicle.modelo}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="submit"
-              disabled={salvando}
-              className="rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] px-4 py-3 font-bold"
-            >
-              {salvando ? 'SALVANDO...' : 'VINCULAR VEÍCULO'}
-            </button>
-          </form>
-
-          {erro && (
-            <div className="mt-4 rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300">
-              {erro}
+        <div className="rounded-md border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Vínculos ativos</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Veja quais técnicos estão atualmente vinculados aos veículos.
+              </p>
             </div>
-          )}
 
-          {sucesso && (
-            <div className="mt-4 rounded-lg border border-green-500 bg-green-500/10 px-4 py-3 text-green-300">
-              {sucesso}
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {activeAssignments.length} vínculo(s)
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6">
-          <h2 className="text-2xl font-bold mb-4">Vínculos ativos</h2>
+          <div className="p-6">
+            {loading ? (
+              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
+                Carregando vínculos...
+              </div>
+            ) : activeAssignments.length === 0 ? (
+              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
+                Nenhum vínculo ativo.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {activeAssignments.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-md border border-slate-200 bg-[#fafbfd] p-5 transition hover:border-[#2f6eea] hover:shadow-sm"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-800">
+                          {item.profiles?.nome || 'Técnico não identificado'}
+                        </h3>
 
-          {loading ? (
-            <p>Carregando...</p>
-          ) : activeAssignments.length === 0 ? (
-            <p className="text-slate-300">Nenhum vínculo ativo.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {activeAssignments.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-[#050827] border border-[#1d2466] rounded-2xl p-5"
-                >
-                  <h3 className="text-xl font-semibold">
-                    {item.profiles?.nome} ({item.profiles?.username})
-                  </h3>
-                  <p className="text-slate-300 mt-1">
-                    Veículo: {item.vehicles?.placa} - {item.vehicles?.modelo}
-                  </p>
-                  <p className="text-slate-400 mt-1">
-                    Vinculado em: {new Date(item.started_at).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+                        <p className="mt-1 text-sm text-slate-500">
+                          Usuário:{' '}
+                          <span className="font-semibold text-slate-700">
+                            {item.profiles?.username || '-'}
+                          </span>
+                        </p>
+
+                        <p className="mt-3 text-sm text-slate-500">
+                          Veículo:{' '}
+                          <span className="font-semibold text-slate-700">
+                            {item.vehicles?.placa || '-'} {item.vehicles?.modelo ? `- ${item.vehicles.modelo}` : ''}
+                          </span>
+                        </p>
+
+                        <p className="mt-3 text-sm text-slate-500">
+                          Vinculado em:{' '}
+                          <span className="font-semibold text-slate-700">
+                            {new Date(item.started_at).toLocaleString('pt-BR')}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-full bg-[#35c6cf] px-3 py-1 text-xs font-bold text-white">
+                          Técnico ativo
+                        </span>
+
+                        <span className="rounded-full bg-[#4a90e2] px-3 py-1 text-xs font-bold text-white">
+                          Veículo liberado
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </main>

@@ -117,95 +117,149 @@ export default function AprovacoesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#02052b] text-white">
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-6 mb-6 shadow-2xl">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <p className="text-slate-400 text-sm uppercase tracking-[0.2em]">Gestão de acessos</p>
-              <h1 className="text-4xl font-bold mt-2">Aprovações de Técnicos</h1>
-              <p className="text-slate-300 mt-2">
-                Libere ou exclua cadastros pendentes.
-              </p>
-            </div>
-
-            <button
-              onClick={() => router.push('/gestor')}
-              className="bg-[#1d2466] hover:bg-[#28318a] rounded-lg px-5 py-3 font-semibold"
-            >
-              Voltar
-            </button>
-          </div>
+    <main className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
+            Gestão de acessos
+          </p>
+          <h1 className="mt-2 text-4xl font-bold text-slate-800">
+            Aprovações de Técnicos
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Libere ou exclua cadastros pendentes.
+          </p>
         </div>
 
         {erro && (
-          <div className="rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300 mb-4">
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {erro}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-5">
-            <p className="text-slate-400 text-sm">Pendentes</p>
-            <h2 className="text-4xl font-bold mt-2 text-yellow-400">{usuarios.length}</h2>
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Pendentes</p>
+            <h2 className="mt-2 text-4xl font-bold text-[#f0ad4e]">
+              {usuarios.length}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Técnicos aguardando aprovação
+            </p>
           </div>
 
-          <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-5">
-            <p className="text-slate-400 text-sm">Ação</p>
-            <h2 className="text-2xl font-bold mt-3">Aprovação manual</h2>
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Ação</p>
+            <h2 className="mt-3 text-2xl font-bold text-slate-800">
+              Aprovação manual
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Controle centralizado pelo gestor
+            </p>
           </div>
 
-          <div className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-5">
-            <p className="text-slate-400 text-sm">Fluxo</p>
-            <h2 className="text-2xl font-bold mt-3 text-green-400">Sob controle</h2>
+          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm text-slate-500">Fluxo</p>
+            <h2 className="mt-3 text-2xl font-bold text-[#38a96a]">
+              Sob controle
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Processo de acesso monitorado
+            </p>
           </div>
         </div>
 
-        {loading ? (
-          <div className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-6">
-            Carregando pendentes...
-          </div>
-        ) : usuarios.length === 0 ? (
-          <div className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-6">
-            Nenhum técnico pendente de aprovação.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {usuarios.map((usuario) => (
-              <div
-                key={usuario.id}
-                className="bg-[#070b3f] border border-[#1d2466] rounded-2xl p-5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4"
-              >
-                <div>
-                  <h2 className="text-xl font-semibold">{usuario.nome}</h2>
-                  <p className="text-slate-300 mt-1">Usuário: {usuario.username}</p>
-                  <p className="text-slate-400">E-mail: {usuario.email}</p>
-                  <p className="text-slate-500 text-sm mt-2">
-                    Cadastro em {new Date(usuario.created_at).toLocaleString('pt-BR')}
-                  </p>
-                </div>
+        <div className="rounded-md border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">
+                Cadastros pendentes
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Aprove ou exclua usuários técnicos aguardando liberação.
+              </p>
+            </div>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => aprovar(usuario.id)}
-                    disabled={processandoId === usuario.id}
-                    className="bg-green-600 hover:bg-green-700 disabled:opacity-60 rounded-lg px-5 py-3 font-bold transition"
-                  >
-                    Aprovar
-                  </button>
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {usuarios.length} pendente(s)
+            </div>
+          </div>
 
-                  <button
-                    onClick={() => excluir(usuario.id)}
-                    disabled={processandoId === usuario.id}
-                    className="bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-lg px-5 py-3 font-bold transition"
-                  >
-                    Excluir
-                  </button>
-                </div>
+          <div className="p-6">
+            {loading ? (
+              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
+                Carregando pendentes...
               </div>
-            ))}
+            ) : usuarios.length === 0 ? (
+              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
+                Nenhum técnico pendente de aprovação.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {usuarios.map((usuario) => (
+                  <div
+                    key={usuario.id}
+                    className="rounded-md border border-slate-200 bg-[#fafbfd] p-5 transition hover:border-[#2f6eea] hover:shadow-sm"
+                  >
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0">
+                        <h2 className="text-xl font-bold text-slate-800">
+                          {usuario.nome}
+                        </h2>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          Usuário:{' '}
+                          <span className="font-semibold text-slate-700">
+                            {usuario.username}
+                          </span>
+                        </p>
+
+                        <p className="mt-1 break-all text-sm text-slate-500">
+                          E-mail interno: {usuario.email}
+                        </p>
+
+                        <p className="mt-3 text-sm text-slate-500">
+                          Cadastro em{' '}
+                          <span className="font-semibold text-slate-700">
+                            {new Date(usuario.created_at).toLocaleString('pt-BR')}
+                          </span>
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-[#35c6cf] px-3 py-1 text-xs font-bold text-white">
+                            Técnico
+                          </span>
+
+                          <span className="rounded-full bg-[#f0ad4e] px-3 py-1 text-xs font-bold text-white">
+                            Pendente
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2 xl:min-w-[340px]">
+                        <button
+                          onClick={() => aprovar(usuario.id)}
+                          disabled={processandoId === usuario.id}
+                          className="rounded-md bg-[#38a96a] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#2f8f59] disabled:opacity-70"
+                        >
+                          {processandoId === usuario.id ? 'Processando...' : 'Aprovar'}
+                        </button>
+
+                        <button
+                          onClick={() => excluir(usuario.id)}
+                          disabled={processandoId === usuario.id}
+                          className="rounded-md bg-[#d9534f] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#c83e39] disabled:opacity-70"
+                        >
+                          {processandoId === usuario.id ? 'Processando...' : 'Excluir'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </main>
   )
