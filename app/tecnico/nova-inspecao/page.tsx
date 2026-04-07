@@ -81,6 +81,7 @@ export default function NovaInspecaoPage() {
         .from('vehicles')
         .select('id, placa, modelo')
         .in('id', vehicleIds)
+        .eq('ativo', true) // CORREÇÃO: Garante que apenas veículos ativos apareçam
         .order('placa', { ascending: true })
 
       if (vehiclesError) {
@@ -173,19 +174,16 @@ export default function NovaInspecaoPage() {
           profile_id: userId,
           inspection_date: inspectionDate,
           odometer: Number(odometer),
-
           item_triangulo: itemTriangulo,
           item_macaco: itemMacaco,
           item_chave_roda: itemChaveRoda,
           item_estepe: itemEstepe,
           observation_general: observationGeneral,
-
           motor_oil_level: motorOilLevel,
           motor_brakes: motorBrakes,
           motor_suspension: motorSuspension,
           motor_headlights: motorHeadlights,
           motor_observation: motorObservation,
-
           cleaning_mats: cleaningMats,
           cleaning_water: cleaningWater,
           cleaning_windshield: cleaningWindshield,
@@ -269,14 +267,12 @@ export default function NovaInspecaoPage() {
 
           <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
             <h2 className="text-xl font-semibold mb-4">Checklist do carro</h2>
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <label className="flex items-center gap-2"><input type="checkbox" checked={itemTriangulo} onChange={(e) => setItemTriangulo(e.target.checked)} /> Triângulo</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={itemMacaco} onChange={(e) => setItemMacaco(e.target.checked)} /> Macaco</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={itemChaveRoda} onChange={(e) => setItemChaveRoda(e.target.checked)} /> Chave de roda</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={itemEstepe} onChange={(e) => setItemEstepe(e.target.checked)} /> Estepe</label>
             </div>
-
             <div className="mt-4">
               <label className="block mb-2">Observação geral</label>
               <textarea
@@ -289,14 +285,12 @@ export default function NovaInspecaoPage() {
 
           <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
             <h2 className="text-xl font-semibold mb-4">Motor</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input type="text" placeholder="Nível do óleo" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorOilLevel} onChange={(e) => setMotorOilLevel(e.target.value)} />
               <input type="text" placeholder="Freios" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorBrakes} onChange={(e) => setMotorBrakes(e.target.value)} />
               <input type="text" placeholder="Suspensão" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorSuspension} onChange={(e) => setMotorSuspension(e.target.value)} />
               <input type="text" placeholder="Farol" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorHeadlights} onChange={(e) => setMotorHeadlights(e.target.value)} />
             </div>
-
             <div className="mt-4">
               <label className="block mb-2">Observação do motor</label>
               <textarea
@@ -309,7 +303,6 @@ export default function NovaInspecaoPage() {
 
           <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
             <h2 className="text-xl font-semibold mb-4">Limpeza</h2>
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <label className="flex items-center gap-2"><input type="checkbox" checked={cleaningMats} onChange={(e) => setCleaningMats(e.target.checked)} /> Tapetes</label>
               <label className="flex items-center gap-2"><input type="checkbox" checked={cleaningWater} onChange={(e) => setCleaningWater(e.target.checked)} /> Água</label>
@@ -320,33 +313,27 @@ export default function NovaInspecaoPage() {
 
           <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
             <h2 className="text-xl font-semibold mb-4">Fotos do veículo</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block mb-2">Foto da frente</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoFrente(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
-
               <div>
                 <label className="block mb-2">Foto do fundo</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoFundo(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
-
               <div>
                 <label className="block mb-2">Foto lateral direita</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoLateralDir(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
-
               <div>
                 <label className="block mb-2">Foto lateral esquerda</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoLateralEsq(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
-
               <div>
                 <label className="block mb-2">Foto das ferramentas</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoFerramentas(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
-
               <div>
                 <label className="block mb-2">Foto do hodômetro</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoHodometro(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
@@ -364,7 +351,6 @@ export default function NovaInspecaoPage() {
             <button type="submit" disabled={salvando} className="bg-[#2f6eea] hover:bg-[#255ed0] disabled:opacity-60 rounded-lg px-5 py-3 font-semibold">
               {salvando ? 'Salvando...' : 'Salvar inspeção'}
             </button>
-
             <button type="button" onClick={() => router.push('/tecnico')} className="bg-[#1d2466] hover:bg-[#28318a] rounded-lg px-5 py-3 font-semibold">
               Voltar
             </button>

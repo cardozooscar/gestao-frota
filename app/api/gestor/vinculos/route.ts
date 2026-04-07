@@ -14,6 +14,7 @@ export async function GET() {
       supabaseAdmin
         .from('vehicles')
         .select('id, placa, modelo, ativo')
+        .eq('ativo', true) // CORREÇÃO: Gestor só vincula carros ativos
         .order('placa', { ascending: true }),
 
       supabaseAdmin
@@ -23,17 +24,9 @@ export async function GET() {
         .order('started_at', { ascending: false }),
     ])
 
-    if (tecnicosResult.error) {
-      return NextResponse.json({ error: tecnicosResult.error.message }, { status: 500 })
-    }
-
-    if (vehiclesResult.error) {
-      return NextResponse.json({ error: vehiclesResult.error.message }, { status: 500 })
-    }
-
-    if (vinculosResult.error) {
-      return NextResponse.json({ error: vinculosResult.error.message }, { status: 500 })
-    }
+    if (tecnicosResult.error) return NextResponse.json({ error: tecnicosResult.error.message }, { status: 500 })
+    if (vehiclesResult.error) return NextResponse.json({ error: vehiclesResult.error.message }, { status: 500 })
+    if (vinculosResult.error) return NextResponse.json({ error: vinculosResult.error.message }, { status: 500 })
 
     const tecnicos = tecnicosResult.data || []
     const vehicles = vehiclesResult.data || []
@@ -49,11 +42,7 @@ export async function GET() {
     }))
 
     return NextResponse.json({
-      data: {
-        tecnicos,
-        vehicles,
-        activeAssignments,
-      },
+      data: { tecnicos, vehicles, activeAssignments },
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Erro interno' }, { status: 500 })
@@ -71,36 +60,24 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString()
 
-    const { error: closeTechError } = await supabaseAdmin
+    // Encerra vínculos antigos do técnico e do veículo
+    await supabaseAdmin
       .from('vehicle_assignments')
       .update({ ended_at: now })
       .eq('profile_id', profileId)
       .is('ended_at', null)
 
-    if (closeTechError) {
-      return NextResponse.json({ error: closeTechError.message }, { status: 500 })
-    }
-
-    const { error: closeVehicleError } = await supabaseAdmin
+    await supabaseAdmin
       .from('vehicle_assignments')
       .update({ ended_at: now })
       .eq('vehicle_id', vehicleId)
       .is('ended_at', null)
 
-    if (closeVehicleError) {
-      return NextResponse.json({ error: closeVehicleError.message }, { status: 500 })
-    }
-
     const { error: insertError } = await supabaseAdmin
       .from('vehicle_assignments')
-      .insert({
-        profile_id: profileId,
-        vehicle_id: vehicleId,
-      })
+      .insert({ profile_id: profileId, vehicle_id: vehicleId })
 
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 })
-    }
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
@@ -108,15 +85,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// NOVA FUNÇÃO PARA DESVINCULAR
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json()
     const { assignmentId } = body
 
-    if (!assignmentId) {
-      return NextResponse.json({ error: 'ID do vínculo é obrigatório.' }, { status: 400 })
-    }
+    if (!assignmentId) return NextResponse.json({ error: 'ID do vínculo é obrigatório.' }, { status: 400 })
 
     const now = new Date().toISOString()
 
@@ -125,9 +99,7 @@ export async function PATCH(req: NextRequest) {
       .update({ ended_at: now })
       .eq('id', assignmentId)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
