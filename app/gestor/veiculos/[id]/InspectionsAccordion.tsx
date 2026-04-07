@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CheckCircle2, XCircle, Camera, Tool, Droplets, ShieldCheck, Activity } from "lucide-react"
+// Troquei Tool por Wrench aqui embaixo
+import { CheckCircle2, XCircle, Camera, Wrench, Droplets, ShieldCheck, Activity } from "lucide-react"
 
 type Inspection = Record<string, any>
 
@@ -9,7 +10,6 @@ type Props = {
   inspections: Inspection[]
 }
 
-// 1. DICIONÁRIO DE TRADUÇÃO (O fim do inglês na tela)
 const LABEL_MAP: Record<string, string> = {
   item_triangulo: "Triângulo",
   item_macaco: "Macaco",
@@ -84,7 +84,6 @@ export default function InspectionsAccordion({ inspections }: Props) {
                 {items.map((inspection) => (
                   <div key={inspection.id} className="py-8 first:pt-4 last:pb-4">
                     
-                    {/* CABEÇALHO DA INSPEÇÃO */}
                     <div className="mb-6 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-slate-100 text-[#2f6eea]">
@@ -94,7 +93,7 @@ export default function InspectionsAccordion({ inspections }: Props) {
                           <p className="text-sm font-bold text-slate-900">
                             {new Date(inspection.inspection_date).toLocaleDateString("pt-BR")}
                           </p>
-                          <p className="text-xs text-slate-500">Realizado por ID: {inspection.profile_id.substring(0,8)}</p>
+                          <p className="text-xs text-slate-500">Protocolo: {inspection.id.substring(0,8)}</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -104,13 +103,12 @@ export default function InspectionsAccordion({ inspections }: Props) {
                       </div>
                     </div>
 
-                    {/* BLOCOS DE INFORMAÇÃO GRUPADOS */}
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                       
-                      {/* GRUPO: SEGURANÇA / CHECKLIST */}
+                      {/* GRUPO: SEGURANÇA - Agora usando Wrench */}
                       <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
                         <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2 font-bold text-slate-700">
-                          <Tool size={16} className="text-[#2f6eea]" /> Itens de Segurança
+                          <Wrench size={16} className="text-[#2f6eea]" /> Itens de Segurança
                         </div>
                         <div className="space-y-2">
                           {['item_triangulo', 'item_macaco', 'item_chave_roda', 'item_estepe'].map(key => (
@@ -122,7 +120,6 @@ export default function InspectionsAccordion({ inspections }: Props) {
                         </div>
                       </div>
 
-                      {/* GRUPO: MOTOR */}
                       <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
                         <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2 font-bold text-slate-700">
                           <Activity size={16} className="text-orange-500" /> Condições do Motor
@@ -137,7 +134,6 @@ export default function InspectionsAccordion({ inspections }: Props) {
                         </div>
                       </div>
 
-                      {/* GRUPO: LIMPEZA */}
                       <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
                         <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2 font-bold text-slate-700">
                           <Droplets size={16} className="text-cyan-500" /> Higienização
@@ -153,7 +149,6 @@ export default function InspectionsAccordion({ inspections }: Props) {
                       </div>
                     </div>
 
-                    {/* OBSERVAÇÕES */}
                     <div className="mt-6 grid gap-4 md:grid-cols-2">
                       <div className="rounded-lg bg-blue-50/50 p-4 border border-blue-100">
                         <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Observações Gerais</p>
@@ -165,7 +160,6 @@ export default function InspectionsAccordion({ inspections }: Props) {
                       </div>
                     </div>
 
-                    {/* GALERIA DE FOTOS (RENOVADA) */}
                     {inspection.inspection_photos && inspection.inspection_photos.length > 0 && (
                       <div className="mt-8">
                         <div className="mb-4 flex items-center gap-2 font-bold text-slate-700">
@@ -192,10 +186,8 @@ export default function InspectionsAccordion({ inspections }: Props) {
                       </div>
                     )}
 
-                    {/* RODAPÉ DO REGISTRO */}
                     <div className="mt-8 flex items-center justify-between border-t border-slate-50 pt-4 text-[10px] text-slate-400 uppercase tracking-widest font-medium">
-                      <span>Protocolo: {inspection.id}</span>
-                      <span>Registrado em {new Date(inspection.created_at).toLocaleString("pt-BR")}</span>
+                      <span>Registro criado em {new Date(inspection.created_at).toLocaleString("pt-BR")}</span>
                     </div>
                   </div>
                 ))}
