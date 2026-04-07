@@ -31,11 +31,6 @@ export default function NovaInspecaoPage() {
   const [itemEstepe, setItemEstepe] = useState(false)
   const [observationGeneral, setObservationGeneral] = useState('')
 
-  const [tireFrontRight, setTireFrontRight] = useState('')
-  const [tireFrontLeft, setTireFrontLeft] = useState('')
-  const [tireRearRight, setTireRearRight] = useState('')
-  const [tireRearLeft, setTireRearLeft] = useState('')
-
   const [motorOilLevel, setMotorOilLevel] = useState('')
   const [motorBrakes, setMotorBrakes] = useState('')
   const [motorSuspension, setMotorSuspension] = useState('')
@@ -52,6 +47,7 @@ export default function NovaInspecaoPage() {
   const [fotoLateralDir, setFotoLateralDir] = useState<File | null>(null)
   const [fotoLateralEsq, setFotoLateralEsq] = useState<File | null>(null)
   const [fotoHodometro, setFotoHodometro] = useState<File | null>(null)
+  const [fotoFerramentas, setFotoFerramentas] = useState<File | null>(null)
 
   useEffect(() => {
     async function loadInitialData() {
@@ -106,7 +102,7 @@ export default function NovaInspecaoPage() {
 
   async function uploadFoto(
     file: File,
-    tipo: 'frente' | 'fundo' | 'lateral_direita' | 'lateral_esquerda' | 'hodometro',
+    tipo: 'frente' | 'fundo' | 'lateral_direita' | 'lateral_esquerda' | 'hodometro' | 'ferramentas',
     inspectionId: string,
     userId: string
   ) {
@@ -184,11 +180,6 @@ export default function NovaInspecaoPage() {
           item_estepe: itemEstepe,
           observation_general: observationGeneral,
 
-          tire_front_right: tireFrontRight ? Number(tireFrontRight) : null,
-          tire_front_left: tireFrontLeft ? Number(tireFrontLeft) : null,
-          tire_rear_right: tireRearRight ? Number(tireRearRight) : null,
-          tire_rear_left: tireRearLeft ? Number(tireRearLeft) : null,
-
           motor_oil_level: motorOilLevel,
           motor_brakes: motorBrakes,
           motor_suspension: motorSuspension,
@@ -214,6 +205,7 @@ export default function NovaInspecaoPage() {
       if (fotoLateralDir) await uploadFoto(fotoLateralDir, 'lateral_direita', inspectionId, userId)
       if (fotoLateralEsq) await uploadFoto(fotoLateralEsq, 'lateral_esquerda', inspectionId, userId)
       if (fotoHodometro) await uploadFoto(fotoHodometro, 'hodometro', inspectionId, userId)
+      if (fotoFerramentas) await uploadFoto(fotoFerramentas, 'ferramentas', inspectionId, userId)
 
       router.push('/tecnico')
     } catch (err: any) {
@@ -296,17 +288,6 @@ export default function NovaInspecaoPage() {
           </section>
 
           <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Calibragem dos pneus</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <input type="number" step="0.01" placeholder="Dianteiro direito" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={tireFrontRight} onChange={(e) => setTireFrontRight(e.target.value)} />
-              <input type="number" step="0.01" placeholder="Dianteiro esquerdo" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={tireFrontLeft} onChange={(e) => setTireFrontLeft(e.target.value)} />
-              <input type="number" step="0.01" placeholder="Traseiro direito" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={tireRearRight} onChange={(e) => setTireRearRight(e.target.value)} />
-              <input type="number" step="0.01" placeholder="Traseiro esquerdo" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={tireRearLeft} onChange={(e) => setTireRearLeft(e.target.value)} />
-            </div>
-          </section>
-
-          <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
             <h2 className="text-xl font-semibold mb-4">Motor</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -361,7 +342,12 @@ export default function NovaInspecaoPage() {
                 <input type="file" accept="image/*" onChange={(e) => setFotoLateralEsq(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
 
-              <div className="md:col-span-2">
+              <div>
+                <label className="block mb-2">Foto das ferramentas</label>
+                <input type="file" accept="image/*" onChange={(e) => setFotoFerramentas(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
+              </div>
+
+              <div>
                 <label className="block mb-2">Foto do hodômetro</label>
                 <input type="file" accept="image/*" onChange={(e) => setFotoHodometro(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
               </div>
