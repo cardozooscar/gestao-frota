@@ -118,7 +118,7 @@ export default function InspectionsAccordion({ inspections }: Props) {
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         {Object.entries(inspection)
                           .filter(([key, value]) => {
-                            // ignora campos já tratados
+                            // ignora campos já tratados ou removidos
                             const ignore = [
                               "id",
                               "inspection_date",
@@ -127,6 +127,12 @@ export default function InspectionsAccordion({ inspections }: Props) {
                               "motor_observation",
                               "created_at",
                               "vehicle_id",
+                              "profile_id",
+                              "tire_front_right",
+                              "tire_front_left",
+                              "tire_rear_right",
+                              "tire_rear_left",
+                              "inspection_photos" // Ignorado aqui para ser renderizado abaixo
                             ]
                             return !ignore.includes(key) && value !== null && value !== ""
                           })
@@ -139,11 +145,41 @@ export default function InspectionsAccordion({ inspections }: Props) {
                                 {key.replaceAll("_", " ")}
                               </p>
                               <p className="mt-2 text-sm text-slate-700">
-                                {String(value)}
+                                {typeof value === 'boolean' ? (value ? 'Sim' : 'Não') : String(value)}
                               </p>
                             </div>
                           ))}
                       </div>
+
+                      {/* GALERIA DE FOTOS */}
+                      {inspection.inspection_photos && Array.isArray(inspection.inspection_photos) && inspection.inspection_photos.length > 0 && (
+                        <div className="mt-6 border-t border-slate-100 pt-4">
+                          <p className="text-xs uppercase tracking-wide text-slate-400 mb-3">
+                            Fotos da Inspeção
+                          </p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {inspection.inspection_photos.map((photo: any) => (
+                              <div key={photo.id || photo.public_url} className="flex flex-col gap-1">
+                                <a 
+                                  href={photo.public_url} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="block overflow-hidden rounded-md border border-slate-200"
+                                >
+                                  <img 
+                                    src={photo.public_url} 
+                                    alt={photo.photo_type} 
+                                    className="h-32 w-full object-cover transition duration-300 hover:scale-105" 
+                                  />
+                                </a>
+                                <span className="text-[10px] font-semibold uppercase text-slate-500 text-center">
+                                  {photo.photo_type.replace('_', ' ')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* RODAPÉ */}
                       <div className="mt-4 text-xs text-slate-400">
