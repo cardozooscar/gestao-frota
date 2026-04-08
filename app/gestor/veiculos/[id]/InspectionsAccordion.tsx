@@ -1,8 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
-// Troquei Tool por Wrench aqui embaixo
-import { CheckCircle2, XCircle, Camera, Wrench, Droplets, ShieldCheck, Activity } from "lucide-react"
+import { 
+  CheckCircle2, XCircle, Camera, Wrench, 
+  Droplets, ShieldCheck, Activity, Trash2 
+} from "lucide-react"
 
 type Inspection = Record<string, any>
 
@@ -47,6 +49,26 @@ export default function InspectionsAccordion({ inspections }: Props) {
   const [openMonth, setOpenMonth] = useState<string | null>(
     months.length > 0 ? months[0][0] : null
   )
+
+  // Estado para controlar qual item está sendo excluído
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+
+  async function handleDelete(id: string) {
+    if (!confirm("Tem certeza que deseja excluir esta inspeção permanentemente?")) return
+
+    setIsDeleting(id)
+    try {
+      const res = await fetch(`/api/gestor/inspecoes/${id}`, { method: 'DELETE' })
+      
+      if (!res.ok) throw new Error("Erro ao excluir")
+      
+      // Recarrega a página para atualizar os dados e gráficos do gestor
+      window.location.reload()
+    } catch (err) {
+      alert("Não foi possível excluir a inspeção.")
+      setIsDeleting(null)
+    }
+  }
 
   if (!inspections.length) {
     return (
@@ -96,16 +118,24 @@ export default function InspectionsAccordion({ inspections }: Props) {
                           <p className="text-xs text-slate-500">Protocolo: {inspection.id.substring(0,8)}</p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-2">
                         <span className="inline-block rounded-full bg-slate-900 px-4 py-1.5 text-sm font-black text-white">
                           {inspection.odometer?.toLocaleString()} KM
                         </span>
+                        
+                        {/* Botão de Exclusão */}
+                        <button
+                          onClick={() => handleDelete(inspection.id)}
+                          disabled={isDeleting === inspection.id}
+                          className="flex items-center gap-1 text-[10px] font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider disabled:opacity-50"
+                        >
+                          <Trash2 size={12} />
+                          {isDeleting === inspection.id ? "Excluindo..." : "Excluir Registro"}
+                        </button>
                       </div>
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      
-                      {/* GRUPO: SEGURANÇA - Agora usando Wrench */}
                       <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4">
                         <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2 font-bold text-slate-700">
                           <Wrench size={16} className="text-[#2f6eea]" /> Itens de Segurança
