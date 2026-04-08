@@ -73,8 +73,8 @@ export default async function GestorHomePage() {
     <div className="min-h-screen bg-[#02052b] text-white p-4 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md">
+        {/* HEADER - CORREÇÃO DE Z-INDEX APLICADA AQUI (relative z-50) */}
+        <div className="relative z-50 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
               <LayoutDashboard size={14} /> Sistema de Gestão
@@ -93,7 +93,6 @@ export default async function GestorHomePage() {
                 </span>
               </summary>
               
-              {/* DROPDOWN CORRIGIDO */}
               <div className="absolute right-0 z-50 mt-4 w-80 overflow-hidden rounded-3xl border border-white/10 bg-[#070b3f] shadow-2xl backdrop-blur-xl">
                 <div className="p-4 border-b border-white/5 bg-white/5">
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Alertas Operacionais</p>
@@ -144,7 +143,7 @@ export default async function GestorHomePage() {
           </div>
         </div>
 
-        {/* RESTANTE DOS CARDS E GRÁFICOS (Mantidos) */}
+        {/* RESTANTE DOS CARDS E GRÁFICOS */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-600/20 to-blue-600/5 p-6 backdrop-blur-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Veículos</p>
