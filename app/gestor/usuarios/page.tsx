@@ -1,6 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { 
+  ShieldCheck, 
+  Users, 
+  Mail, 
+  AtSign, 
+  KeyRound, 
+  Power, 
+  Settings2, 
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react'
 
 type User = {
   id: string
@@ -67,7 +78,7 @@ export default function UsuariosPage() {
   }
 
   async function resetPassword(userId: string) {
-    const novaSenha = prompt('Nova senha:')
+    const novaSenha = prompt('Digite a nova senha para este usuário:')
 
     if (!novaSenha) return
 
@@ -98,15 +109,9 @@ export default function UsuariosPage() {
   }
 
   function getRoleBadge(role: string) {
-    if (role === 'admin') {
-      return 'bg-[#d9534f] text-white'
-    }
-
-    if (role === 'supervisor') {
-      return 'bg-[#f0ad4e] text-white'
-    }
-
-    return 'bg-[#35c6cf] text-white'
+    if (role === 'admin') return 'bg-red-500/20 text-red-400 border border-red-500/30'
+    if (role === 'supervisor') return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+    return 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
   }
 
   function getRoleLabel(role: string) {
@@ -116,156 +121,155 @@ export default function UsuariosPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
-            Administração
-          </p>
-          <h1 className="mt-2 text-4xl font-bold text-slate-800">
-            Gestão de Usuários
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Controle acessos, cargos, aprovação e redefinição de senha.
-          </p>
+    <main className="min-h-screen bg-[#02052b] p-4 lg:p-8 text-white">
+      <div className="mx-auto max-w-7xl space-y-8">
+        
+        {/* HEADER DA PÁGINA */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
+              <ShieldCheck size={14} /> Administração
+            </div>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Gestão de Usuários</h1>
+            <p className="mt-2 text-sm text-slate-400">Controle acessos, cargos, aprovações e senhas da equipe.</p>
+          </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
+        {/* LISTAGEM DE USUÁRIOS */}
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md">
+          
+          <div className="flex flex-col gap-4 border-b border-white/5 pb-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                Usuários cadastrados
+              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                <Users size={20} className="text-blue-400" /> Usuários cadastrados
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Gerencie os acessos do sistema de forma centralizada.
-              </p>
+              <p className="text-xs text-slate-400 mt-1">Gerencie os acessos do sistema de forma centralizada.</p>
             </div>
 
-            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            <div className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-xs font-bold text-slate-400">
               {users.length} usuário(s)
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="mt-8">
             {erro && (
-              <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="mb-6 rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400">
                 {erro}
               </div>
             )}
 
             {loading ? (
-              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
-                Carregando usuários...
-              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 py-12 text-center text-sm text-slate-400">Carregando usuários...</div>
             ) : users.length === 0 ? (
-              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
-                Nenhum usuário encontrado.
+              <div className="rounded-2xl border-2 border-dashed border-white/10 bg-white/5 py-16 flex flex-col items-center justify-center gap-3">
+                <AlertCircle size={48} className="text-slate-600 mb-2" />
+                <p className="text-sm font-bold text-slate-400">Nenhum usuário encontrado.</p>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 gap-6">
                 {users.map((user) => (
                   <div
                     key={user.id}
-                    className="rounded-md border border-slate-200 bg-[#fafbfd] p-5 transition hover:border-[#2f6eea] hover:shadow-sm"
+                    className={`group relative overflow-hidden rounded-2xl border transition-all hover:shadow-lg ${user.active ? 'border-white/10 bg-white/5 hover:border-[#2f6eea] hover:shadow-blue-500/5' : 'border-red-500/20 bg-red-500/5 opacity-80 grayscale-[20%]'}`}
                   >
-                    <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="text-xl font-bold text-slate-800">
-                          {user.nome}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-slate-500">
-                          Usuário:{' '}
-                          <span className="font-semibold text-slate-700">
-                            {user.username}
-                          </span>
-                        </p>
-
-                        <p className="mt-1 text-sm text-slate-500 break-all">
-                          E-mail interno: {user.email}
-                        </p>
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ${getRoleBadge(
-                              user.role
-                            )}`}
-                          >
+                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 p-6">
+                      
+                      {/* INFORMAÇÕES DO USUÁRIO */}
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3 mb-4">
+                          <h3 className="text-xl font-black text-white">{user.nome}</h3>
+                          
+                          {/* Badges de Status */}
+                          <span className={`inline-flex rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${getRoleBadge(user.role)}`}>
                             {getRoleLabel(user.role)}
                           </span>
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
-                              user.active ? 'bg-[#38a96a]' : 'bg-[#6c757d]'
-                            }`}
-                          >
+                          <span className={`inline-flex rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider border ${user.active ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-slate-500/20 text-slate-400 border-slate-500/30'}`}>
                             {user.active ? 'Ativo' : 'Inativo'}
                           </span>
 
                           {user.role === 'tecnico' && (
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
-                                user.approved ? 'bg-[#4a90e2]' : 'bg-[#f0ad4e]'
-                              }`}
-                            >
+                            <span className={`inline-flex rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider border ${user.approved ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-orange-500/20 text-orange-400 border-orange-500/30'}`}>
                               {user.approved ? 'Aprovado' : 'Pendente'}
                             </span>
                           )}
                         </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#070b3f] border border-white/5 text-slate-400">
+                              <AtSign size={14} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Usuário</p>
+                              <p className="font-medium text-slate-300">{user.username}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#070b3f] border border-white/5 text-slate-400">
+                              <Mail size={14} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">E-mail Interno</p>
+                              <p className="font-medium text-slate-300">{user.email}</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-2 xl:min-w-[430px]">
-                        <button
-                          onClick={() =>
-                            updateUser(user.id, 'active', !user.active)
-                          }
-                          disabled={salvandoId === user.id}
-                          className="rounded-md bg-[#6c757d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#5c6670] disabled:opacity-70"
-                        >
-                          {user.active ? 'Desativar usuário' : 'Ativar usuário'}
-                        </button>
-
-                        {user.role === 'tecnico' && !user.approved ? (
-                          <button
-                            onClick={() =>
-                              updateUser(user.id, 'approved', true)
-                            }
+                      {/* CONTROLES E AÇÕES */}
+                      <div className="flex flex-col gap-3 pt-4 xl:pt-0 border-t border-white/5 xl:border-t-0 xl:border-l xl:pl-6 min-w-[280px]">
+                        
+                        {/* Seletor de Cargo */}
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-500">
+                            <Settings2 size={14} />
+                          </div>
+                          <select
+                            value={user.role}
+                            onChange={(e) => updateUser(user.id, 'role', e.target.value)}
                             disabled={salvandoId === user.id}
-                            className="rounded-md bg-[#38a96a] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2f8f59] disabled:opacity-70"
+                            className="w-full rounded-xl border border-white/10 bg-[#070b3f] pl-9 pr-4 py-2.5 text-sm text-white outline-none transition focus:border-[#2f6eea] appearance-none disabled:opacity-50"
                           >
-                            Aprovar técnico
+                            <option value="admin">Administrador</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="tecnico">Técnico</option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Botão Ativar/Desativar */}
+                          <button
+                            onClick={() => updateUser(user.id, 'active', !user.active)}
+                            disabled={salvandoId === user.id}
+                            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition disabled:opacity-50 ${user.active ? 'border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500 hover:text-white' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white'}`}
+                          >
+                            <Power size={14} /> {user.active ? 'Bloquear' : 'Ativar'}
                           </button>
-                        ) : (
+
+                          {/* Botão Resetar Senha */}
                           <button
                             onClick={() => resetPassword(user.id)}
                             disabled={salvandoId === user.id}
-                            className="rounded-md bg-[#2f6eea] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#255ed0] disabled:opacity-70"
+                            className="flex items-center justify-center gap-1.5 rounded-xl border border-[#2f6eea]/50 bg-[#2f6eea]/10 px-3 py-2.5 text-xs font-bold text-[#2f6eea] transition hover:bg-[#2f6eea] hover:text-white disabled:opacity-50"
                           >
-                            Resetar senha
+                            <KeyRound size={14} /> Nova Senha
+                          </button>
+                        </div>
+
+                        {/* Botão de Aprovação (Visível apenas se pendente) */}
+                        {user.role === 'tecnico' && !user.approved && (
+                          <button
+                            onClick={() => updateUser(user.id, 'approved', true)}
+                            disabled={salvandoId === user.id}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50 mt-1"
+                          >
+                            <CheckCircle2 size={16} /> Aprovar Técnico
                           </button>
                         )}
-
-                        <select
-                          value={user.role}
-                          onChange={(e) =>
-                            updateUser(user.id, 'role', e.target.value)
-                          }
-                          disabled={salvandoId === user.id}
-                          className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10 disabled:opacity-70"
-                        >
-                          <option value="admin">Administrador</option>
-                          <option value="supervisor">Supervisor</option>
-                          <option value="tecnico">Técnico</option>
-                        </select>
-
-                        <button
-                          onClick={() => resetPassword(user.id)}
-                          disabled={salvandoId === user.id}
-                          className="rounded-md border border-[#2f6eea] bg-white px-4 py-3 text-sm font-bold text-[#2f6eea] transition hover:bg-[#f3f7ff] disabled:opacity-70"
-                        >
-                          Alterar senha
-                        </button>
                       </div>
+
                     </div>
                   </div>
                 ))}
