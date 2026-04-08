@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { User, AtSign, Mail, Lock, UserPlus, ArrowLeft } from 'lucide-react'
 
 export default function CadastroPage() {
   const router = useRouter()
@@ -73,78 +74,128 @@ export default function CadastroPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#02052b] text-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#070b3f] border border-[#1d2466] rounded-2xl p-8 shadow-2xl">
-        <div className="text-center mb-8">
-          <div className="text-4xl font-bold tracking-tight text-white">Fibranet</div>
-          <p className="text-yellow-400 font-semibold mt-6 text-2xl">Criar acesso</p>
+    <main className="relative min-h-screen flex items-center justify-center bg-[#02052b] text-white px-4 py-8 overflow-hidden">
+      
+      {/* EFEITOS DE LUZ NO FUNDO (BLOBS) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-600/10 blur-[100px] rounded-full pointer-events-none" />
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+          
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/10 bg-[#070b3f] shadow-inner">
+              <img
+                src="https://raw.githubusercontent.com/cardozooscar/imagenscgr/refs/heads/main/WhatsApp_Image_2025-10-30_at_10.21.26__1_-removebg-preview.png"
+                alt="Fibranet"
+                className="max-h-12 max-w-12 object-contain"
+              />
+            </div>
+
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-blue-400">
+              Fibranet Brasil
+            </p>
+
+            <h1 className="text-3xl font-black mt-2 tracking-tight">
+              Criar Acesso
+            </h1>
+            <p className="text-sm text-slate-400 mt-2">
+              Preencha os dados para solicitar sua conta
+            </p>
+          </div>
+
+          <form onSubmit={handleCadastro} className="space-y-4">
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+                <User size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Nome completo"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#02052b] pl-12 pr-4 py-3 text-sm outline-none transition-all focus:border-[#2f6eea] focus:ring-1 focus:ring-[#2f6eea] placeholder-slate-500"
+                required
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+                <AtSign size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Usuário (login)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#02052b] pl-12 pr-4 py-3 text-sm outline-none transition-all focus:border-[#2f6eea] focus:ring-1 focus:ring-[#2f6eea] placeholder-slate-500"
+                required
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+                <Mail size={18} />
+              </div>
+              <input
+                type="email"
+                placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#02052b] pl-12 pr-4 py-3 text-sm outline-none transition-all focus:border-[#2f6eea] focus:ring-1 focus:ring-[#2f6eea] placeholder-slate-500"
+                required
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+                <Lock size={18} />
+              </div>
+              <input
+                type="password"
+                placeholder="Crie uma senha"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#02052b] pl-12 pr-4 py-3 text-sm outline-none transition-all focus:border-[#2f6eea] focus:ring-1 focus:ring-[#2f6eea] placeholder-slate-500"
+                required
+              />
+            </div>
+
+            {erro && (
+              <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-red-400 text-sm font-bold text-center">
+                {erro}
+              </div>
+            )}
+
+            {sucesso && (
+              <div className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-emerald-400 text-sm font-bold text-center">
+                {sucesso}
+              </div>
+            )}
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={salvando}
+                className="group w-full flex items-center justify-center gap-2 rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] py-4 font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20 active:scale-[0.98]"
+              >
+                {salvando ? 'PROCESSANDO...' : (
+                  <><UserPlus size={18} /> SOLICITAR ACESSO</>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push('/login')}
+                className="w-full mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-transparent hover:bg-white/5 py-4 font-bold text-slate-300 transition-all active:scale-[0.98]"
+              >
+                <ArrowLeft size={18} className="text-slate-500" /> VOLTAR AO LOGIN
+              </button>
+            </div>
+          </form>
+
         </div>
-
-        <form onSubmit={handleCadastro} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Nome completo"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            className="w-full rounded-lg bg-[#050827] border border-[#1d2466] px-4 py-3 outline-none"
-            required
-          />
-
-          <input
-            type="text"
-            placeholder="Usuário"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-lg bg-[#050827] border border-[#1d2466] px-4 py-3 outline-none"
-            required
-          />
-
-          <input
-            type="email"
-            placeholder="E-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-[#050827] border border-[#1d2466] px-4 py-3 outline-none"
-            required
-          />
-
-          <input
-            type="password"
-            placeholder="Senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            className="w-full rounded-lg bg-[#050827] border border-[#1d2466] px-4 py-3 outline-none"
-            required
-          />
-
-          {erro && (
-            <div className="rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300">
-              {erro}
-            </div>
-          )}
-
-          {sucesso && (
-            <div className="rounded-lg border border-green-500 bg-green-500/10 px-4 py-3 text-green-300">
-              {sucesso}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={salvando}
-            className="w-full rounded-lg bg-[#2f6eea] hover:bg-[#255ed0] transition px-4 py-3 font-bold"
-          >
-            {salvando ? 'CRIANDO...' : 'CRIAR CONTA'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push('/login')}
-            className="w-full rounded-lg bg-[#1d2466] hover:bg-[#28318a] transition px-4 py-3 font-semibold"
-          >
-            VOLTAR AO LOGIN
-          </button>
-        </form>
       </div>
     </main>
   )
