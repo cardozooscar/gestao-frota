@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { User, Lock, LogIn, UserPlus } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -113,73 +114,97 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#02052b] text-white px-4">
-      <div className="w-full max-w-md">
-        <div className="rounded-[28px] border border-[#1d2466] bg-[#070b3f] p-8 shadow-2xl">
+    <main className="relative min-h-screen flex items-center justify-center bg-[#02052b] text-white px-4 overflow-hidden">
+      
+      {/* EFEITOS DE LUZ NO FUNDO (BLOBS) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-600/10 blur-[100px] rounded-full pointer-events-none" />
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+          
           <div className="text-center mb-8">
-            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-xl border border-[#1d2466] bg-white/5 p-2">
+            <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-2xl border border-white/10 bg-[#070b3f] shadow-inner">
               <img
                 src="https://raw.githubusercontent.com/cardozooscar/imagenscgr/refs/heads/main/WhatsApp_Image_2025-10-30_at_10.21.26__1_-removebg-preview.png"
                 alt="Fibranet"
-                className="max-h-full max-w-full object-contain"
+                className="max-h-16 max-w-16 object-contain"
               />
             </div>
 
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-              FIBRANET BRASIL
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-blue-400">
+              Fibranet Brasil
             </p>
 
-            <h1 className="text-2xl font-bold mt-3">
-              Acesso ao Painel
+            <h1 className="text-3xl font-black mt-2 tracking-tight">
+              Acesso ao Sistema
             </h1>
+            <p className="text-sm text-slate-400 mt-2">
+              Insira suas credenciais para continuar
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Usuário ou e-mail"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
-              className="w-full rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none focus:border-[#2f6eea]"
-              required
-              autoComplete="username"
-            />
+          <form onSubmit={handleLogin} className="space-y-5">
+            
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+                <User size={18} />
+              </div>
+              <input
+                type="text"
+                placeholder="Usuário ou e-mail"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#02052b] pl-12 pr-4 py-3.5 text-sm outline-none transition-all focus:border-[#2f6eea] focus:ring-1 focus:ring-[#2f6eea] placeholder-slate-500"
+                required
+                autoComplete="username"
+              />
+            </div>
 
-            <input
-              type="password"
-              placeholder="Senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="w-full rounded-xl border border-[#1d2466] bg-[#050827] px-4 py-3 outline-none focus:border-[#2f6eea]"
-              required
-              autoComplete="current-password"
-            />
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+                <Lock size={18} />
+              </div>
+              <input
+                type="password"
+                placeholder="Senha"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-[#02052b] pl-12 pr-4 py-3.5 text-sm outline-none transition-all focus:border-[#2f6eea] focus:ring-1 focus:ring-[#2f6eea] placeholder-slate-500"
+                required
+                autoComplete="current-password"
+              />
+            </div>
 
             {erro && (
-              <div className="rounded-lg border border-red-500 bg-red-500/10 px-4 py-3 text-red-300 text-sm whitespace-pre-wrap">
+              <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-red-400 text-sm font-bold whitespace-pre-wrap text-center">
                 {erro}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={carregando}
-              className="w-full rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] py-3 font-bold transition disabled:opacity-60"
-            >
-              {carregando ? 'ENTRANDO...' : 'ENTRAR'}
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={carregando}
+                className="group w-full flex items-center justify-center gap-2 rounded-xl bg-[#2f6eea] hover:bg-[#255ed0] py-4 font-bold transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20 active:scale-[0.98]"
+              >
+                {carregando ? 'ENTRANDO...' : (
+                  <>ENTRAR <LogIn size={18} className="group-hover:translate-x-1 transition-transform" /></>
+                )}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => router.push('/cadastro')}
-              className="w-full rounded-xl bg-[#1d2466] hover:bg-[#28318a] py-3 font-semibold transition"
-            >
-              CRIAR NOVO LOGIN
-            </button>
+              <button
+                type="button"
+                onClick={() => router.push('/cadastro')}
+                className="w-full mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-transparent hover:bg-white/5 py-4 font-bold text-slate-300 transition-all active:scale-[0.98]"
+              >
+                <UserPlus size={18} className="text-slate-500" /> CRIAR NOVO ACESSO
+              </button>
+            </div>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500">
-            Sistema interno • Fibranet Brasil
+          <div className="mt-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-600">
+            Sistema Interno • Fibranet Brasil
           </div>
         </div>
       </div>
