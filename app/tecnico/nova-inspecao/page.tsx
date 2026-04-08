@@ -22,7 +22,10 @@ export default function NovaInspecaoPage() {
   const [salvando, setSalvando] = useState(false)
 
   const [vehicleId, setVehicleId] = useState('')
-  const [inspectionDate, setInspectionDate] = useState('')
+  
+  // 🔥 AJUSTE AQUI: A data já nasce preenchida com o dia de hoje no fuso horário local
+  const [inspectionDate, setInspectionDate] = useState(new Date().toLocaleDateString('en-CA'))
+  
   const [odometer, setOdometer] = useState('')
 
   const [itemTriangulo, setItemTriangulo] = useState(false)
@@ -81,7 +84,7 @@ export default function NovaInspecaoPage() {
         .from('vehicles')
         .select('id, placa, modelo')
         .in('id', vehicleIds)
-        .eq('ativo', true) // CORREÇÃO: Garante que apenas veículos ativos apareçam
+        .eq('ativo', true)
         .order('placa', { ascending: true })
 
       if (vehiclesError) {
@@ -245,7 +248,7 @@ export default function NovaInspecaoPage() {
                 <label className="block mb-2">Data</label>
                 <input
                   type="date"
-                  className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none"
+                  className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none opacity-80" // 🔥 Opacidade leve para indicar campo automático
                   value={inspectionDate}
                   onChange={(e) => setInspectionDate(e.target.value)}
                   required
@@ -265,6 +268,7 @@ export default function NovaInspecaoPage() {
             </div>
           </section>
 
+          {/* O RESTANTE DO CÓDIGO CONTINUA IGUAL... */}
           <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
             <h2 className="text-xl font-semibold mb-4">Checklist do carro</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
