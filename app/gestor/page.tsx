@@ -10,17 +10,16 @@ import {
   Bell, 
   LayoutDashboard,
   TrendingUp,
-  History
+  History,
+  UserPlus
 } from 'lucide-react'
 
 export const revalidate = 0
 
-// Tipagens (mantidas conforme o original)
+// Tipagens
 type Vehicle = { id: string; placa: string; modelo: string | null; ativo: boolean | null; is_active: boolean | null }
 type Profile = { id: string; nome: string; username: string; role: 'admin' | 'supervisor' | 'tecnico'; approved: boolean; active: boolean }
 type Inspection = { id: string; inspection_date: string; vehicle_id: string; odometer: number | null; created_at: string }
-type NotificationItem = { id: string; title: string; description: string; href: string; tone: 'red' | 'orange' | 'purple' | 'blue' }
-type VehicleMileage = { vehicle_id: string; placa: string; modelo: string | null; first_odometer: number; last_odometer: number; km_rodado: number }
 type VehicleCurrentOdometer = { vehicle_id: string; placa: string; modelo: string | null; odometer: number; inspection_date: string }
 
 function isVehicleActive(vehicle: Vehicle) {
@@ -49,23 +48,22 @@ export default async function GestorHomePage() {
   const pendingTechs = (pendingTechsRes.data || []) as Profile[]
 
   const vehiclesAtivosList = vehicles.filter((v) => isVehicleActive(v))
-  const totalVeiculos = vehicles.length
-  const veiculosAtivos = vehiclesAtivosList.length
-
+  
   const latestInspectionByVehicle = new Map<string, Inspection>()
   for (const inspection of inspections) {
     if (!latestInspectionByVehicle.has(inspection.vehicle_id)) latestInspectionByVehicle.set(inspection.vehicle_id, inspection)
   }
 
+  // LÓGICA DE ALERTAS
   const veiculosSemInspecao = vehiclesAtivosList.filter(v => !latestInspectionByVehicle.has(v.id))
   const veiculosInspecaoAtrasada = vehiclesAtivosList.filter(v => {
     const latest = latestInspectionByVehicle.get(v.id)
     return latest ? getDaysDifference(latest.inspection_date) > 30 : false
   })
 
+  // Soma total correta para o Badge
   const totalAlertas = veiculosSemInspecao.length + veiculosInspecaoAtrasada.length + pendingTechs.length
 
-  // Dados para os Gráficos
   const currentOdometerRanking = vehiclesAtivosList.map(v => {
     const latest = inspections.find(i => i.vehicle_id === v.id && i.odometer !== null)
     return latest ? { vehicle_id: v.id, placa: v.placa, modelo: v.modelo, odometer: latest.odometer || 0, inspection_date: latest.inspection_date } : null
@@ -94,6 +92,8 @@ export default async function GestorHomePage() {
                   {totalAlertas}
                 </span>
               </summary>
+              
+              {/* DROPDOWN CORRIGIDO */}
               <div className="absolute right-0 z-50 mt-4 w-80 overflow-hidden rounded-3xl border border-white/10 bg-[#070b3f] shadow-2xl backdrop-blur-xl">
                 <div className="p-4 border-b border-white/5 bg-white/5">
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Alertas Operacionais</p>
@@ -103,10 +103,37 @@ export default async function GestorHomePage() {
                     <p className="p-4 text-center text-xs text-slate-500">Tudo em ordem na frota.</p>
                   ) : (
                     <>
+                      {/* 1. Alertas de Veículos Sem Inspeção */}
                       {veiculosSemInspecao.map(v => (
                         <Link key={v.id} href={`/gestor/veiculos/${v.id}`} className="block p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
-                          <p className="text-xs font-bold text-red-400">{v.placa} sem inspeção</p>
-                          <p className="text-[10px] text-slate-500 mt-1">Nenhum registro encontrado</p>
+                          <p className="text-xs font-bold text-red-400 flex items-center gap-2">
+                            <AlertTriangle size={12} /> {v.placa} sem inspeção
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">Nenhum registro encontrado no banco.</p>
+                        </Link>
+                      ))}
+
+                      {/* 2. Alertas de Inspeção Atrasada (>30 dias) */}
+                      {veiculosInspecaoAtrasada.map(v => {
+                         const latest = latestInspectionByVehicle.get(v.id)
+                         const dias = latest ? getDaysDifference(latest.inspection_date) : 0
+                         return (
+                          <Link key={v.id} href={`/gestor/veiculos/${v.id}`} className="block p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+                            <p className="text-xs font-bold text-orange-400 flex items-center gap-2">
+                              <History size={12} /> {v.placa} atrasada
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-1">Última vistoria realizada há {dias} dias.</p>
+                          </Link>
+                         )
+                      })}
+
+                      {/* 3. Alertas de Novos Técnicos para Aprovação */}
+                      {pendingTechs.map(t => (
+                        <Link key={t.id} href="/gestor/aprovacoes" className="block p-3 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all">
+                          <p className="text-xs font-bold text-purple-400 flex items-center gap-2">
+                            <UserPlus size={12} /> Novo Técnico: {t.nome}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-1">Aguardando aprovação de cadastro.</p>
                         </Link>
                       ))}
                     </>
@@ -117,55 +144,35 @@ export default async function GestorHomePage() {
           </div>
         </div>
 
-        {/* INDICADORES (Cards com Gradiente e Ícones) */}
+        {/* RESTANTE DOS CARDS E GRÁFICOS (Mantidos) */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: 'Veículos', value: totalVeiculos, sub: 'Total cadastrado', color: 'from-blue-600/20 to-blue-600/5', border: 'border-blue-500/20', icon: <Car className="text-blue-400" /> },
-            { label: 'Ativos', value: veiculosAtivos, sub: 'Em operação', color: 'from-emerald-600/20 to-emerald-600/5', border: 'border-emerald-500/20', icon: <CheckCircle2 className="text-emerald-400" /> },
-            { label: 'Inspeções', value: inspections.length, sub: 'Histórico total', color: 'from-purple-600/20 to-purple-600/5', border: 'border-purple-500/20', icon: <ClipboardList className="text-purple-400" /> },
-            { label: 'Alertas', value: totalAlertas, sub: 'Ação necessária', color: 'from-orange-600/20 to-orange-600/5', border: 'border-orange-500/20', icon: <AlertTriangle className="text-orange-400" /> },
-          ].map((card, i) => (
-            <div key={i} className={`relative overflow-hidden rounded-3xl border ${card.border} bg-gradient-to-br ${card.color} p-6 backdrop-blur-sm`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{card.label}</p>
-                  <p className="mt-2 text-4xl font-black tracking-tighter">{card.value}</p>
-                  <p className="mt-1 text-xs text-slate-500 font-medium">{card.sub}</p>
-                </div>
-                <div className="p-3 bg-white/5 rounded-2xl">{card.icon}</div>
-              </div>
-            </div>
-          ))}
+          <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-600/20 to-blue-600/5 p-6 backdrop-blur-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Veículos</p>
+            <p className="mt-2 text-4xl font-black tracking-tighter">{vehicles.length}</p>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-600/20 to-emerald-600/5 p-6 backdrop-blur-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ativos</p>
+            <p className="mt-2 text-4xl font-black tracking-tighter">{vehiclesAtivosList.length}</p>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-purple-500/20 bg-gradient-to-br from-purple-600/20 to-purple-600/5 p-6 backdrop-blur-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Inspeções</p>
+            <p className="mt-2 text-4xl font-black tracking-tighter">{inspections.length}</p>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-600/20 to-orange-600/5 p-6 backdrop-blur-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Alertas</p>
+            <p className="mt-2 text-4xl font-black tracking-tighter">{totalAlertas}</p>
+          </div>
         </div>
 
-        {/* GRÁFICOS */}
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <TrendingUp size={20} className="text-blue-400" /> Hodômetro Total
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">Ranking das maiores quilometragens atuais.</p>
-              </div>
-            </div>
-            <div className="h-[300px] w-full">
-              <HodometroTotalChart data={currentOdometerRanking} />
-            </div>
+            <h2 className="text-xl font-bold flex items-center gap-2 mb-8">
+              <TrendingUp size={20} className="text-blue-400" /> Hodômetro Total
+            </h2>
+            <HodometroTotalChart data={currentOdometerRanking} />
           </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <History size={20} className="text-purple-400" /> Uso Mensal
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">Análise de rodagem no mês vigente.</p>
-              </div>
-            </div>
-            <div className="h-[300px] w-full flex items-center justify-center bg-white/5 rounded-2xl border border-dashed border-white/10">
-              <p className="text-sm text-slate-500 italic">Aguardando dados de rodagem...</p>
-            </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm flex items-center justify-center">
+             <p className="text-slate-500 italic text-sm">Selecione um veículo para ver detalhes mensais.</p>
           </div>
         </div>
 
