@@ -3,6 +3,18 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { 
+  Car, 
+  Calendar, 
+  Gauge, 
+  ClipboardCheck, 
+  Activity, 
+  Droplets, 
+  Camera, 
+  ChevronLeft,
+  Save,
+  CheckCircle2
+} from 'lucide-react'
 
 type Vehicle = {
   id: string
@@ -22,10 +34,7 @@ export default function NovaInspecaoPage() {
   const [salvando, setSalvando] = useState(false)
 
   const [vehicleId, setVehicleId] = useState('')
-  
-  // 🔥 AJUSTE AQUI: A data já nasce preenchida com o dia de hoje no fuso horário local
   const [inspectionDate, setInspectionDate] = useState(new Date().toLocaleDateString('en-CA'))
-  
   const [odometer, setOdometer] = useState('')
 
   const [itemTriangulo, setItemTriangulo] = useState(false)
@@ -55,150 +64,62 @@ export default function NovaInspecaoPage() {
   useEffect(() => {
     async function loadInitialData() {
       const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) { router.push('/login'); return }
 
-      if (!userData.user) {
-        router.push('/login')
-        return
-      }
-
-      const { data: assignments, error: vinculoError } = await supabase
+      const { data: assignments } = await supabase
         .from('vehicle_assignments')
         .select('vehicle_id')
         .eq('profile_id', userData.user.id)
         .is('ended_at', null)
 
-      if (vinculoError) {
-        setErro('Erro ao carregar veículo liberado: ' + vinculoError.message)
-        return
-      }
-
       const vehicleIds = (assignments as Assignment[] | null)?.map((item) => item.vehicle_id) || []
+      if (vehicleIds.length === 0) return
 
-      if (vehicleIds.length === 0) {
-        setVeiculos([])
-        setVehicleId('')
-        return
-      }
-
-      const { data: vehiclesData, error: vehiclesError } = await supabase
+      const { data: vehiclesData } = await supabase
         .from('vehicles')
         .select('id, placa, modelo')
         .in('id', vehicleIds)
         .eq('ativo', true)
         .order('placa', { ascending: true })
 
-      if (vehiclesError) {
-        setErro('Erro ao carregar veículo liberado: ' + vehiclesError.message)
-        return
-      }
-
       const lista = (vehiclesData as Vehicle[]) || []
-
       setVeiculos(lista)
-
-      if (lista.length === 1) {
-        setVehicleId(lista[0].id)
-      }
+      if (lista.length === 1) setVehicleId(lista[0].id)
     }
-
     loadInitialData()
   }, [router])
 
-  async function uploadFoto(
-    file: File,
-    tipo: 'frente' | 'fundo' | 'lateral_direita' | 'lateral_esquerda' | 'hodometro' | 'ferramentas',
-    inspectionId: string,
-    userId: string
-  ) {
+  async function uploadFoto(file: File, tipo: string, inspectionId: string, userId: string) {
     const extensao = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const filePath = `${inspectionId}/${tipo}_${Date.now()}.${extensao}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('inspection-photos')
-      .upload(filePath, file, {
-        upsert: false,
-      })
-
-    if (uploadError) {
-      throw new Error(`Erro ao subir foto ${tipo}: ${uploadError.message}`)
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('inspection-photos').getPublicUrl(filePath)
-
-    const { error: insertPhotoError } = await supabase.from('inspection_photos').insert({
+    await supabase.storage.from('inspection-photos').upload(filePath, file)
+    const { data: { publicUrl } } = supabase.storage.from('inspection-photos').getPublicUrl(filePath)
+    await supabase.from('inspection_photos').insert({
       inspection_id: inspectionId,
       photo_type: tipo,
       file_path: filePath,
       public_url: publicUrl,
       profile_id: userId,
     })
-
-    if (insertPhotoError) {
-      throw new Error(`Erro ao registrar foto ${tipo}: ${insertPhotoError.message}`)
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setErro('')
-
-    if (!vehicleId) {
-      setErro('Nenhum veículo foi liberado para você.')
-      return
-    }
-
-    if (!inspectionDate) {
-      setErro('Informe a data da inspeção.')
-      return
-    }
-
-    if (!odometer) {
-      setErro('Informe o hodômetro.')
-      return
-    }
-
-    setSalvando(true)
-
+    setErro(''); setSalvando(true)
     try {
       const { data: userData } = await supabase.auth.getUser()
-
-      if (!userData.user) {
-        throw new Error('Usuário não autenticado.')
-      }
-
+      if (!userData.user) throw new Error('Usuário não autenticado.')
       const userId = userData.user.id
 
-      const { data: insertData, error: inspectionError } = await supabase
-        .from('inspections')
-        .insert({
-          vehicle_id: vehicleId,
-          profile_id: userId,
-          inspection_date: inspectionDate,
-          odometer: Number(odometer),
-          item_triangulo: itemTriangulo,
-          item_macaco: itemMacaco,
-          item_chave_roda: itemChaveRoda,
-          item_estepe: itemEstepe,
-          observation_general: observationGeneral,
-          motor_oil_level: motorOilLevel,
-          motor_brakes: motorBrakes,
-          motor_suspension: motorSuspension,
-          motor_headlights: motorHeadlights,
-          motor_observation: motorObservation,
-          cleaning_mats: cleaningMats,
-          cleaning_water: cleaningWater,
-          cleaning_windshield: cleaningWindshield,
-          cleaning_bodywork: cleaningBodywork,
-        })
-        .select()
-        .single()
+      const { data: insertData, error: inspectionError } = await supabase.from('inspections').insert({
+        vehicle_id: vehicleId, profile_id: userId, inspection_date: inspectionDate, odometer: Number(odometer),
+        item_triangulo: itemTriangulo, item_macaco: itemMacaco, item_chave_roda: itemChaveRoda, item_estepe: itemEstepe,
+        observation_general: observationGeneral, motor_oil_level: motorOilLevel, motor_brakes: motorBrakes,
+        motor_suspension: motorSuspension, motor_headlights: motorHeadlights, motor_observation: motorObservation,
+        cleaning_mats: cleaningMats, cleaning_water: cleaningWater, cleaning_windshield: cleaningWindshield, cleaning_bodywork: cleaningBodywork,
+      }).select().single()
 
-      if (inspectionError || !insertData) {
-        throw new Error(inspectionError?.message || 'Erro ao salvar inspeção.')
-      }
-
+      if (inspectionError || !insertData) throw new Error(inspectionError?.message || 'Erro ao salvar.')
       const inspectionId = insertData.id
 
       if (fotoFrente) await uploadFoto(fotoFrente, 'frente', inspectionId, userId)
@@ -209,156 +130,161 @@ export default function NovaInspecaoPage() {
       if (fotoFerramentas) await uploadFoto(fotoFerramentas, 'ferramentas', inspectionId, userId)
 
       router.push('/tecnico')
-    } catch (err: any) {
-      setErro(err.message || 'Erro inesperado ao salvar inspeção.')
-    } finally {
-      setSalvando(false)
-    }
+    } catch (err: any) { setErro(err.message || 'Erro inesperado.'); setSalvando(false) }
   }
 
   return (
-    <main className="min-h-screen bg-[#02052b] text-white p-6">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Nova Inspeção</h1>
+    <main className="min-h-screen bg-[#02052b] text-white p-4 pb-12">
+      <div className="max-w-3xl mx-auto space-y-6">
+        
+        {/* HEADER COM VOLTAR */}
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.push('/tecnico')} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-2xl font-extrabold tracking-tight">Nova Inspeção</h1>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Informações básicas</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block mb-2">Veículo liberado</label>
-                <select
-                  className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none"
-                  value={vehicleId}
-                  onChange={(e) => setVehicleId(e.target.value)}
-                  required
-                  disabled={veiculos.length <= 1}
+          
+          {/* SEÇÃO: BÁSICO */}
+          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4">
+            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-xs tracking-widest mb-2">
+              <Car size={16} /> Dados do Veículo
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-400 ml-1">Veículo</label>
+                <select 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-all"
+                  value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} required disabled={veiculos.length <= 1}
                 >
-                  <option value="">Selecione</option>
-                  {veiculos.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.placa} - {v.modelo}
-                    </option>
-                  ))}
+                  <option value="" className="bg-[#02052b]">Selecione...</option>
+                  {veiculos.map((v) => <option key={v.id} value={v.id} className="bg-[#02052b]">{v.placa} - {v.modelo}</option>)}
                 </select>
               </div>
-
-              <div>
-                <label className="block mb-2">Data</label>
-                <input
-                  type="date"
-                  className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none opacity-80" // 🔥 Opacidade leve para indicar campo automático
-                  value={inspectionDate}
-                  onChange={(e) => setInspectionDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2">Hodômetro</label>
-                <input
-                  type="number"
-                  className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none"
-                  value={odometer}
-                  onChange={(e) => setOdometer(e.target.value)}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 ml-1">Data</label>
+                  <input type="date" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none" value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 ml-1">Hodômetro</label>
+                  <input type="number" placeholder="0" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-blue-500" value={odometer} onChange={(e) => setOdometer(e.target.value)} required />
+                </div>
               </div>
             </div>
           </section>
 
-          {/* O RESTANTE DO CÓDIGO CONTINUA IGUAL... */}
-          <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Checklist do carro</h2>
+          {/* SEÇÃO: CHECKLIST */}
+          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase text-xs tracking-widest mb-6">
+              <ClipboardCheck size={16} /> Checklist de Segurança
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={itemTriangulo} onChange={(e) => setItemTriangulo(e.target.checked)} /> Triângulo</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={itemMacaco} onChange={(e) => setItemMacaco(e.target.checked)} /> Macaco</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={itemChaveRoda} onChange={(e) => setItemChaveRoda(e.target.checked)} /> Chave de roda</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={itemEstepe} onChange={(e) => setItemEstepe(e.target.checked)} /> Estepe</label>
+              {[ 
+                {label: 'Triângulo', state: itemTriangulo, set: setItemTriangulo},
+                {label: 'Macaco', state: itemMacaco, set: setItemMacaco},
+                {label: 'Chave Roda', state: itemChaveRoda, set: setItemChaveRoda},
+                {label: 'Estepe', state: itemEstepe, set: setItemEstepe}
+              ].map((item) => (
+                <button 
+                  key={item.label} type="button" onClick={() => item.set(!item.state)}
+                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${item.state ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-400'}`}
+                >
+                  <span className="text-xs font-bold uppercase">{item.label}</span>
+                  {item.state && <CheckCircle2 size={16} />}
+                </button>
+              ))}
             </div>
-            <div className="mt-4">
-              <label className="block mb-2">Observação geral</label>
-              <textarea
-                className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 min-h-28 outline-none"
-                value={observationGeneral}
-                onChange={(e) => setObservationGeneral(e.target.value)}
-              />
+            <textarea 
+              placeholder="Observações de segurança..." className="w-full mt-4 bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-emerald-500 min-h-[100px]"
+              value={observationGeneral} onChange={(e) => setObservationGeneral(e.target.value)}
+            />
+          </section>
+
+          {/* SEÇÃO: MOTOR */}
+          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-orange-400 font-bold uppercase text-xs tracking-widest mb-6">
+              <Activity size={16} /> Condições do Motor
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <input type="text" placeholder="Nível do óleo" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorOilLevel} onChange={(e) => setMotorOilLevel(e.target.value)} />
+              <input type="text" placeholder="Freios" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorBrakes} onChange={(e) => setMotorBrakes(e.target.value)} />
+              <input type="text" placeholder="Suspensão" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorSuspension} onChange={(e) => setMotorSuspension(e.target.value)} />
+              <input type="text" placeholder="Faróis" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorHeadlights} onChange={(e) => setMotorHeadlights(e.target.value)} />
+            </div>
+            <textarea 
+              placeholder="Notas técnicas do motor..." className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500 min-h-[100px]"
+              value={motorObservation} onChange={(e) => setMotorObservation(e.target.value)}
+            />
+          </section>
+
+          {/* SEÇÃO: LIMPEZA */}
+          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-cyan-400 font-bold uppercase text-xs tracking-widest mb-6">
+              <Droplets size={16} /> Higienização
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[ 
+                {label: 'Tapetes', state: cleaningMats, set: setCleaningMats},
+                {label: 'Água', state: cleaningWater, set: setCleaningWater},
+                {label: 'Para-brisa', state: cleaningWindshield, set: setCleaningWindshield},
+                {label: 'Lataria', state: cleaningBodywork, set: setCleaningBodywork}
+              ].map((item) => (
+                <button 
+                  key={item.label} type="button" onClick={() => item.set(!item.state)}
+                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${item.state ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400' : 'bg-white/5 border-white/10 text-slate-400'}`}
+                >
+                  <span className="text-xs font-bold uppercase">{item.label}</span>
+                  {item.state && <CheckCircle2 size={16} />}
+                </button>
+              ))}
             </div>
           </section>
 
-          <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Motor</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="text" placeholder="Nível do óleo" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorOilLevel} onChange={(e) => setMotorOilLevel(e.target.value)} />
-              <input type="text" placeholder="Freios" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorBrakes} onChange={(e) => setMotorBrakes(e.target.value)} />
-              <input type="text" placeholder="Suspensão" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorSuspension} onChange={(e) => setMotorSuspension(e.target.value)} />
-              <input type="text" placeholder="Farol" className="rounded-lg bg-[#050827] border border-[#1d2466] p-3 outline-none" value={motorHeadlights} onChange={(e) => setMotorHeadlights(e.target.value)} />
+          {/* SEÇÃO: FOTOS */}
+          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-xs tracking-widest mb-6">
+              <Camera size={16} /> Registros Fotográficos
             </div>
-            <div className="mt-4">
-              <label className="block mb-2">Observação do motor</label>
-              <textarea
-                className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3 min-h-28 outline-none"
-                value={motorObservation}
-                onChange={(e) => setMotorObservation(e.target.value)}
-              />
-            </div>
-          </section>
-
-          <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Limpeza</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={cleaningMats} onChange={(e) => setCleaningMats(e.target.checked)} /> Tapetes</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={cleaningWater} onChange={(e) => setCleaningWater(e.target.checked)} /> Água</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={cleaningWindshield} onChange={(e) => setCleaningWindshield(e.target.checked)} /> Para-brisa</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={cleaningBodywork} onChange={(e) => setCleaningBodywork(e.target.checked)} /> Lataria</label>
-            </div>
-          </section>
-
-          <section className="bg-[#070b3f] border border-[#1d2466] rounded-xl p-5">
-            <h2 className="text-xl font-semibold mb-4">Fotos do veículo</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block mb-2">Foto da frente</label>
-                <input type="file" accept="image/*" onChange={(e) => setFotoFrente(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
-              </div>
-              <div>
-                <label className="block mb-2">Foto do fundo</label>
-                <input type="file" accept="image/*" onChange={(e) => setFotoFundo(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
-              </div>
-              <div>
-                <label className="block mb-2">Foto lateral direita</label>
-                <input type="file" accept="image/*" onChange={(e) => setFotoLateralDir(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
-              </div>
-              <div>
-                <label className="block mb-2">Foto lateral esquerda</label>
-                <input type="file" accept="image/*" onChange={(e) => setFotoLateralEsq(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
-              </div>
-              <div>
-                <label className="block mb-2">Foto das ferramentas</label>
-                <input type="file" accept="image/*" onChange={(e) => setFotoFerramentas(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
-              </div>
-              <div>
-                <label className="block mb-2">Foto do hodômetro</label>
-                <input type="file" accept="image/*" onChange={(e) => setFotoHodometro(e.target.files?.[0] || null)} className="w-full rounded-lg bg-[#050827] border border-[#1d2466] p-3" />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                {label: 'Frente', set: setFotoFrente, file: fotoFrente},
+                {label: 'Fundo', set: setFotoFundo, file: fotoFundo},
+                {label: 'Lat. Direita', set: setFotoLateralDir, file: fotoLateralDir},
+                {label: 'Lat. Esquerda', set: setFotoLateralEsq, file: fotoLateralEsq},
+                {label: 'Hodômetro', set: setFotoHodometro, file: fotoHodometro},
+                {label: 'Ferramentas', set: setFotoFerramentas, file: fotoFerramentas}
+              ].map((item) => (
+                <div key={item.label} className="relative">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 ml-1">{item.label}</label>
+                  <div className={`relative flex items-center justify-center h-32 w-full rounded-2xl border-2 border-dashed transition-all ${item.file ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-white/5 border-white/10 text-slate-600 hover:border-white/20'}`}>
+                    <input type="file" accept="image/*" onChange={(e) => item.set(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <div className="flex flex-col items-center gap-2">
+                      <Camera size={24} />
+                      <span className="text-[10px] font-bold uppercase">{item.file ? 'Foto Selecionada' : 'Clique para tirar'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 
           {erro && (
-            <div className="bg-red-500/20 border border-red-500 text-red-300 rounded-lg p-3">
+            <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-4 text-sm font-bold text-center">
               {erro}
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button type="submit" disabled={salvando} className="bg-[#2f6eea] hover:bg-[#255ed0] disabled:opacity-60 rounded-lg px-5 py-3 font-semibold">
-              {salvando ? 'Salvando...' : 'Salvar inspeção'}
-            </button>
-            <button type="button" onClick={() => router.push('/tecnico')} className="bg-[#1d2466] hover:bg-[#28318a] rounded-lg px-5 py-3 font-semibold">
-              Voltar
-            </button>
-          </div>
+          {/* BOTÃO SALVAR */}
+          <button 
+            type="submit" disabled={salvando}
+            className="group flex items-center justify-center gap-3 w-full bg-[#2f6eea] hover:bg-[#255ed0] text-white py-5 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {salvando ? 'PROCESSANDO...' : <><Save size={20} /> FINALIZAR INSPEÇÃO</>}
+          </button>
+
         </form>
       </div>
     </main>
