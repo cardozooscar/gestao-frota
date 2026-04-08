@@ -1,493 +1,249 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { useRouter } from 'next/navigation'
+import { Car, Plus, Trash2, Image as ImageIcon, Power, Settings2, AlertCircle } from 'lucide-react'
 
 type Vehicle = {
   id: string
   placa: string
   modelo: string
-  ownership_type: 'proprio' | 'alugado'
-  ativo: boolean | null
-  is_active?: boolean | null
-  image_url?: string | null
-}
-
-type VehicleModel = {
-  id: string
-  brand: string | null
-  model_name: string
-  image_url: string | null
-  active: boolean
-}
-
-type ActiveTab = 'ativos' | 'inativos'
-
-const DEFAULT_CAR_IMAGE =
-  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80'
-
-function normalizeModelName(value: string | null | undefined) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
-function isVehicleActive(vehicle: Vehicle) {
-  if (typeof vehicle.is_active === 'boolean') return vehicle.is_active
-  if (typeof vehicle.ativo === 'boolean') return vehicle.ativo
-  return false
+  tipo: string // 'Próprio' ou 'Alugado'
+  foto_url: string
+  ativo: boolean
 }
 
 export default function VeiculosPage() {
-  const router = useRouter()
+  const [veiculos, setVeiculos] = useState<Vehicle[]>([])
+  const [loading, setLoading] = useState(true)
+  const [salvando, setSalvando] = useState(false)
+  const [filtro, setFiltro] = useState<'ativos' | 'inativos'>('ativos')
 
+  // Estados do formulário
   const [placa, setPlaca] = useState('')
   const [modelo, setModelo] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [ownershipType, setOwnershipType] = useState<'proprio' | 'alugado'>('proprio')
-  const [veiculos, setVeiculos] = useState<Vehicle[]>([])
-  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([])
-  const [erro, setErro] = useState('')
-  const [sucesso, setSucesso] = useState('')
-  const [salvando, setSalvando] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [processandoId, setProcessandoId] = useState<string | null>(null)
-  const [abaAtiva, setAbaAtiva] = useState<ActiveTab>('ativos')
+  const [tipo, setTipo] = useState('Próprio')
+  const [fotoUrl, setFotoUrl] = useState('')
 
-  async function carregarVeiculos() {
-    setLoading(true)
-    setErro('')
-
-    try {
-      const { data: userData } = await supabase.auth.getUser()
-
-      if (!userData.user) {
-        router.push('/login')
-        return
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userData.user.id)
-        .single()
-
-      if (!profile || !['admin', 'supervisor'].includes(profile.role)) {
-        router.push('/login')
-        return
-      }
-
-      const [vehiclesResponse, modelsResponse] = await Promise.all([
-        supabase
-          .from('vehicles')
-          .select('id, placa, modelo, ownership_type, ativo, is_active, image_url')
-          .order('placa', { ascending: true }),
-
-        supabase
-          .from('vehicle_models')
-          .select('id, brand, model_name, image_url, active')
-          .eq('active', true)
-          .order('model_name', { ascending: true }),
-      ])
-
-      if (vehiclesResponse.error) {
-        throw new Error(vehiclesResponse.error.message || 'Erro ao carregar veículos')
-      }
-
-      if (modelsResponse.error) {
-        throw new Error(modelsResponse.error.message || 'Erro ao carregar catálogo de modelos')
-      }
-
-      setVeiculos((vehiclesResponse.data || []) as Vehicle[])
-      setVehicleModels(modelsResponse.data || [])
-    } catch (err: any) {
-      setErro(err.message || 'Erro ao carregar veículos')
-    } finally {
-      setLoading(false)
-    }
+  async function fetchVeiculos() {
+    const { data } = await supabase
+      .from('vehicles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (data) setVeiculos(data as Vehicle[])
+    setLoading(false)
   }
 
   useEffect(() => {
-    carregarVeiculos()
-  }, [router])
+    fetchVeiculos()
+  }, [])
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleCadastrar(e: React.FormEvent) {
     e.preventDefault()
-    setErro('')
-    setSucesso('')
     setSalvando(true)
 
-    try {
-      const response = await fetch('/api/gestor/veiculos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placa, modelo, ownershipType, imageUrl }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao cadastrar veículo')
-      }
-
-      setSucesso('Veículo cadastrado com sucesso.')
-      setPlaca('')
-      setModelo('')
-      setImageUrl('')
-      setOwnershipType('proprio')
-      setAbaAtiva('ativos')
-      await carregarVeiculos()
-    } catch (err: any) {
-      setErro(err.message || 'Erro ao cadastrar veículo')
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  async function handleDesativarVeiculo(
-    e: React.MouseEvent<HTMLButtonElement>,
-    vehicleId: string
-  ) {
-    e.stopPropagation()
-
-    const confirmado = window.confirm('Deseja realmente desativar este veículo?')
-    if (!confirmado) return
-
-    setErro('')
-    setSucesso('')
-    setProcessandoId(vehicleId)
-
-    try {
-      const response = await fetch(`/api/gestor/veiculos/${vehicleId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deactivate' }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao desativar veículo')
-      }
-
-      setSucesso('Veículo desativado com sucesso.')
-      await carregarVeiculos()
-    } catch (err: any) {
-      setErro(err.message || 'Erro ao desativar veículo')
-    } finally {
-      setProcessandoId(null)
-    }
-  }
-
-  async function handleReativarVeiculo(
-    e: React.MouseEvent<HTMLButtonElement>,
-    vehicleId: string
-  ) {
-    e.stopPropagation()
-
-    const confirmado = window.confirm('Deseja realmente reativar este veículo?')
-    if (!confirmado) return
-
-    setErro('')
-    setSucesso('')
-    setProcessandoId(vehicleId)
-
-    try {
-      const response = await fetch(`/api/gestor/veiculos/${vehicleId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reactivate' }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao reativar veículo')
-      }
-
-      setSucesso('Veículo reativado com sucesso.')
-      await carregarVeiculos()
-    } catch (err: any) {
-      setErro(err.message || 'Erro ao reativar veículo')
-    } finally {
-      setProcessandoId(null)
-    }
-  }
-
-  function getVehicleDisplayImage(veiculo: Vehicle) {
-    if (veiculo.image_url && veiculo.image_url.trim()) {
-      return veiculo.image_url
-    }
-
-    const modeloNormalizado = normalizeModelName(veiculo.modelo)
-
-    const matchedModel = vehicleModels.find((item) => {
-      const catalogo = normalizeModelName(item.model_name)
-
-      return (
-        catalogo === modeloNormalizado ||
-        catalogo.includes(modeloNormalizado) ||
-        modeloNormalizado.includes(catalogo)
-      )
+    const { error } = await supabase.from('vehicles').insert({
+      placa: placa.toUpperCase(),
+      modelo,
+      tipo,
+      foto_url: fotoUrl,
+      ativo: true, // Por padrão, entra como ativo
+      is_active: true
     })
 
-    if (matchedModel?.image_url && matchedModel.image_url.trim()) {
-      return matchedModel.image_url
+    if (!error) {
+      setPlaca('')
+      setModelo('')
+      setTipo('Próprio')
+      setFotoUrl('')
+      fetchVeiculos()
+    } else {
+      alert('Erro ao cadastrar veículo: ' + error.message)
     }
-
-    return DEFAULT_CAR_IMAGE
+    setSalvando(false)
   }
 
-  const veiculosAtivos = useMemo(
-    () => veiculos.filter((veiculo) => isVehicleActive(veiculo)),
-    [veiculos]
-  )
+  async function toggleAtivo(id: string, estadoAtual: boolean) {
+    if (!confirm(`Deseja ${estadoAtual ? 'desativar' : 'ativar'} este veículo?`)) return
+    
+    await supabase.from('vehicles').update({ 
+      ativo: !estadoAtual,
+      is_active: !estadoAtual 
+    }).eq('id', id)
+    
+    fetchVeiculos()
+  }
 
-  const veiculosInativos = useMemo(
-    () => veiculos.filter((veiculo) => !isVehicleActive(veiculo)),
-    [veiculos]
-  )
+  async function handleExcluir(id: string) {
+    if (!confirm('ATENÇÃO: Deseja excluir este veículo permanentemente?')) return
+    await supabase.from('vehicles').delete().eq('id', id)
+    fetchVeiculos()
+  }
 
-  const listaExibida = abaAtiva === 'ativos' ? veiculosAtivos : veiculosInativos
+  const veiculosFiltrados = veiculos.filter(v => filtro === 'ativos' ? v.ativo : !v.ativo)
+  const qtdAtivos = veiculos.filter(v => v.ativo).length
+  const qtdInativos = veiculos.filter(v => !v.ativo).length
 
   return (
-    <main className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
-            Frota
-          </p>
-          <h1 className="mt-2 text-4xl font-bold text-slate-800">Veículos</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Cadastre e gerencie os veículos da operação.
-          </p>
+    <div className="min-h-screen bg-[#02052b] text-white p-4 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-8">
+        
+        {/* HEADER DA PÁGINA */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
+              <Car size={14} /> Frota
+            </div>
+            <h1 className="text-3xl font-black tracking-tight">Veículos</h1>
+            <p className="text-slate-400 text-sm">Cadastre e gerencie os veículos da operação.</p>
+          </div>
         </div>
 
-        <div className="mb-6 rounded-md border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 px-6 py-4">
-            <h2 className="text-2xl font-bold text-slate-800">Novo veículo</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Preencha os dados principais para adicionar um novo item à frota.
-            </p>
+        {/* FORMULÁRIO DE CADASTRO */}
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Plus size={20} className="text-blue-400" /> Novo veículo
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Preencha os dados principais para adicionar um novo item à frota.</p>
           </div>
 
-          <div className="p-6">
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-5">
-              <input
-                type="text"
-                placeholder="Placa"
-                value={placa}
-                onChange={(e) => setPlaca(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
-                required
+          <form onSubmit={handleCadastrar} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <input 
+                type="text" placeholder="Placa (ex: ABC-1234)" required
+                value={placa} onChange={e => setPlaca(e.target.value)}
+                className="w-full bg-[#070b3f] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:border-[#2f6eea] outline-none transition-all uppercase"
               />
-
-              <input
-                type="text"
-                placeholder="Modelo"
-                value={modelo}
-                onChange={(e) => setModelo(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
-                required
+              <input 
+                type="text" placeholder="Modelo (ex: Fiat Uno)" required
+                value={modelo} onChange={e => setModelo(e.target.value)}
+                className="w-full bg-[#070b3f] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:border-[#2f6eea] outline-none transition-all"
               />
-
-              <select
-                value={ownershipType}
-                onChange={(e) => setOwnershipType(e.target.value as 'proprio' | 'alugado')}
-                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10"
-                required
+              <select 
+                value={tipo} onChange={e => setTipo(e.target.value)}
+                className="w-full bg-[#070b3f] border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#2f6eea] outline-none transition-all appearance-none"
               >
-                <option value="proprio">Próprio</option>
-                <option value="alugado">Alugado</option>
+                <option value="Próprio">Próprio</option>
+                <option value="Alugado">Alugado</option>
               </select>
-
-              <input
-                type="text"
-                placeholder="URL da imagem do veículo (opcional)"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#2f6eea] focus:ring-2 focus:ring-[#2f6eea]/10 md:col-span-2"
+              <input 
+                type="url" placeholder="URL da imagem (opcional)" 
+                value={fotoUrl} onChange={e => setFotoUrl(e.target.value)}
+                className="w-full bg-[#070b3f] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:border-[#2f6eea] outline-none transition-all"
               />
-
-              <button
-                type="submit"
-                disabled={salvando}
-                className="rounded-md bg-[#2f6eea] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#255ed0] disabled:cursor-not-allowed disabled:opacity-70 md:col-span-5"
-              >
-                {salvando ? 'SALVANDO...' : 'CADASTRAR VEÍCULO'}
-              </button>
-            </form>
-
-            {erro && (
-              <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {erro}
-              </div>
-            )}
-
-            {sucesso && (
-              <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                {sucesso}
-              </div>
-            )}
-          </div>
+            </div>
+            <button 
+              type="submit" disabled={salvando}
+              className="w-full md:w-auto px-8 py-4 bg-[#2f6eea] hover:bg-[#255ed0] text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {salvando ? 'CADASTRANDO...' : 'CADASTRAR VEÍCULO'}
+            </button>
+          </form>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
+        {/* LISTAGEM DE VEÍCULOS */}
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md">
+          
+          {/* Cabeçalho e Filtros da Listagem */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 border-b border-white/5 pb-6">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">Veículos cadastrados</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Visualize rapidamente os veículos disponíveis no sistema.
-              </p>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Settings2 size={20} className="text-blue-400" /> Veículos cadastrados
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">Visualize e gerencie os veículos disponíveis no sistema.</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                Total: {veiculos.length}
-              </div>
-              <div className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                Ativos: {veiculosAtivos.length}
-              </div>
-              <div className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                Inativos: {veiculosInativos.length}
-              </div>
+            <div className="flex items-center gap-4 text-xs font-bold">
+              <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-slate-400">Total: {veiculos.length}</span>
+              <span className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-emerald-400">Ativos: {qtdAtivos}</span>
+              <span className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg text-red-400">Inativos: {qtdInativos}</span>
             </div>
           </div>
 
-          <div className="border-b border-slate-200 px-6 py-4">
-            <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
-              <button
-                type="button"
-                onClick={() => setAbaAtiva('ativos')}
-                className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
-                  abaAtiva === 'ativos'
-                    ? 'bg-[#2f6eea] text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Ativos ({veiculosAtivos.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAbaAtiva('inativos')}
-                className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
-                  abaAtiva === 'inativos'
-                    ? 'bg-[#d9534f] text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                Inativos ({veiculosInativos.length})
-              </button>
-            </div>
+          {/* Abas de Navegação */}
+          <div className="flex gap-2 mb-6 bg-[#070b3f] p-1 rounded-xl w-fit border border-white/5">
+            <button 
+              onClick={() => setFiltro('ativos')}
+              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${filtro === 'ativos' ? 'bg-[#2f6eea] text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+            >
+              Ativos ({qtdAtivos})
+            </button>
+            <button 
+              onClick={() => setFiltro('inativos')}
+              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${filtro === 'inativos' ? 'bg-[#2f6eea] text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+            >
+              Inativos ({qtdInativos})
+            </button>
           </div>
 
-          <div className="p-6">
-            {loading ? (
-              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
-                Carregando veículos...
-              </div>
-            ) : listaExibida.length === 0 ? (
-              <div className="rounded-md border border-slate-200 bg-[#fafbfd] p-4 text-sm text-slate-500">
-                {abaAtiva === 'ativos'
-                  ? 'Nenhum veículo ativo cadastrado.'
-                  : 'Nenhum veículo inativo cadastrado.'}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {listaExibida.map((veiculo) => {
-                  const ativo = isVehicleActive(veiculo)
-
-                  return (
-                    <div
-                      key={veiculo.id}
-                      onClick={() => router.push(`/gestor/veiculos/${veiculo.id}`)}
-                      className="group cursor-pointer overflow-hidden rounded-md border border-slate-200 bg-[#fafbfd] transition hover:-translate-y-0.5 hover:border-[#2f6eea] hover:shadow-md"
-                    >
-                      <div className="relative h-52 w-full overflow-hidden bg-slate-200">
-                        <img
-                          src={getVehicleDisplayImage(veiculo)}
-                          alt={veiculo.placa}
-                          onError={(e) => {
-                            const target = e.currentTarget
-                            if (target.src !== DEFAULT_CAR_IMAGE) {
-                              target.src = DEFAULT_CAR_IMAGE
-                            }
-                          }}
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                        />
-
-                        <div className="absolute left-4 top-4">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-                              veiculo.ownership_type === 'proprio'
-                                ? 'bg-[#35c6cf] text-white'
-                                : 'bg-[#6b63b5] text-white'
-                            }`}
-                          >
-                            {veiculo.ownership_type === 'proprio' ? 'Próprio' : 'Alugado'}
-                          </span>
-                        </div>
-
-                        <div className="absolute right-4 top-4 flex items-start gap-2">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold text-white ${
-                              ativo ? 'bg-[#38a96a]' : 'bg-[#d9534f]'
-                            }`}
-                          >
-                            {ativo ? 'Ativo' : 'Inativo'}
-                          </span>
-
-                          {ativo ? (
-                            <button
-                              type="button"
-                              onClick={(e) => handleDesativarVeiculo(e, veiculo.id)}
-                              disabled={processandoId === veiculo.id}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-red-600 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                              title="Desativar veículo"
-                            >
-                              {processandoId === veiculo.id ? '...' : '×'}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => handleReativarVeiculo(e, veiculo.id)}
-                              disabled={processandoId === veiculo.id}
-                              className="rounded-md bg-green-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-                              title="Reativar veículo"
-                            >
-                              {processandoId === veiculo.id ? '...' : 'Reativar'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="p-5">
-                        <h3 className="text-2xl font-bold text-slate-800">{veiculo.placa}</h3>
-                        <p className="mt-1 text-sm text-slate-500">{veiculo.modelo}</p>
-
-                        <div className="mt-4 flex items-center justify-between">
-                          <p className="text-sm text-slate-500">Tipo de frota</p>
-                          <p className="text-sm font-semibold text-slate-700">
-                            {veiculo.ownership_type === 'proprio' ? 'Próprio' : 'Alugado'}
-                          </p>
-                        </div>
-
-                        <div className="mt-5 inline-flex items-center text-sm font-semibold text-[#2f6eea] transition group-hover:text-[#214fb1]">
-                          Abrir detalhes <span className="ml-1">→</span>
-                        </div>
-                      </div>
+          {/* Grid de Cards */}
+          {loading ? (
+            <div className="py-12 text-center text-slate-500">Carregando frota...</div>
+          ) : veiculosFiltrados.length === 0 ? (
+            <div className="py-12 text-center border-2 border-dashed border-white/10 rounded-2xl bg-white/5 flex flex-col items-center justify-center gap-3">
+              <AlertCircle size={32} className="text-slate-600" />
+              <p className="text-slate-400 text-sm">Nenhum veículo encontrado nesta categoria.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {veiculosFiltrados.map((v) => (
+                <div key={v.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20 hover:shadow-2xl hover:shadow-blue-500/10">
+                  
+                  {/* Área da Imagem */}
+                  <div className="aspect-video relative bg-[#070b3f] flex items-center justify-center overflow-hidden">
+                    {v.foto_url ? (
+                      <img src={v.foto_url} alt={v.modelo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-500" />
+                    ) : (
+                      <Car size={48} className="text-white/10" />
+                    )}
+                    
+                    {/* Badges Flutuantes */}
+                    <div className="absolute top-3 left-3 flex gap-2">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${v.tipo === 'Alugado' ? 'bg-purple-500/80 text-white backdrop-blur-md' : 'bg-blue-500/80 text-white backdrop-blur-md'}`}>
+                        {v.tipo || 'Próprio'}
+                      </span>
                     </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+                    
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${v.ativo ? 'bg-emerald-500/80 text-white' : 'bg-red-500/80 text-white'}`}>
+                        {v.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Informações do Veículo */}
+                  <div className="p-5">
+                    <h3 className="text-2xl font-black tracking-tight text-white">{v.placa}</h3>
+                    <p className="text-sm font-medium text-slate-400 mt-1">{v.modelo}</p>
+                    
+                    {/* Ações */}
+                    <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
+                      <button 
+                        onClick={() => toggleAtivo(v.id, v.ativo)}
+                        className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${v.ativo ? 'text-orange-400 hover:bg-orange-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'}`}
+                      >
+                        <Power size={14} />
+                        {v.ativo ? 'Desativar' : 'Ativar'}
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleExcluir(v.id)}
+                        className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
       </div>
-    </main>
+    </div>
   )
 }
