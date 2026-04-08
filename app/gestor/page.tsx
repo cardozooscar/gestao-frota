@@ -1,11 +1,9 @@
-'use client' // Alterado para forçar atualização dinâmica se necessário ou manter como Server Component com revalidate
-
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import HodometroTotalChart from './HodometroTotalChart'
 import HodometroMensalChart from './HodometroMensalChart'
 
-// FORÇA O NEXT.JS A BUSCAR DADOS NOVOS SEMPRE (Resolve o problema do hodômetro não aparecer na hora)
+// Garante que o dashboard busque dados novos do banco a cada carregamento
 export const revalidate = 0
 
 type Vehicle = {
@@ -30,6 +28,7 @@ type Inspection = {
   inspection_date: string
   vehicle_id: string
   odometer: number | null
+  created_at: string
 }
 
 type NotificationItem = {
@@ -58,7 +57,6 @@ type VehicleCurrentOdometer = {
 }
 
 function isVehicleActive(vehicle: Vehicle) {
-  // Verifica se o veículo está marcado como ativo em qualquer uma das colunas possíveis
   return vehicle.ativo === true || vehicle.is_active === true
 }
 
@@ -73,7 +71,6 @@ export default async function GestorHomePage() {
   const now = new Date()
   const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-  // Buscamos dados ordenando sempre pelo mais recente no banco (created_at) para evitar confusão de datas
   const [vehiclesRes, inspectionsRes, pendingTechsRes] = await Promise.all([
     supabase
       .from('vehicles')
@@ -98,18 +95,15 @@ export default async function GestorHomePage() {
   const inspections = (inspectionsRes.data || []) as Inspection[]
   const pendingTechs = (pendingTechsRes.data || []) as Profile[]
 
-  // Filtramos apenas veículos que estão ativos para os indicadores
   const vehiclesAtivosList = vehicles.filter((v) => isVehicleActive(v))
   const totalVeiculos = vehicles.length
   const veiculosAtivos = vehiclesAtivosList.length
 
-  // Inspeções do mês apenas para veículos que ainda estão ativos
   const activeVehicleIds = new Set(vehiclesAtivosList.map(v => v.id))
   const inspecoesMes = inspections.filter(
     (ins) => new Date(ins.inspection_date) >= new Date(inicioMes) && activeVehicleIds.has(ins.vehicle_id)
   ).length
 
-  // Lógica de Alertas e Notificações
   const latestInspectionByVehicle = new Map<string, Inspection>()
   for (const inspection of inspections) {
     if (!latestInspectionByVehicle.has(inspection.vehicle_id)) {
@@ -156,7 +150,6 @@ export default async function GestorHomePage() {
     })),
   ].slice(0, 8)
 
-  // RANKING DE HODÔMETRO (Onde corrigimos o sumiço do dado)
   const currentOdometerRanking: VehicleCurrentOdometer[] = vehiclesAtivosList
     .map((vehicle) => {
       const latest = inspections.find(
@@ -176,7 +169,6 @@ export default async function GestorHomePage() {
 
   const chartTotalData = currentOdometerRanking.slice(0, 8)
 
-  // KM RODADO NO MÊS
   const vehicleMileageRanking: VehicleMileage[] = vehiclesAtivosList
     .map((vehicle) => {
       const list = inspections.filter(ins => 
@@ -200,19 +192,22 @@ export default async function GestorHomePage() {
     .filter((item): item is VehicleMileage => item !== null)
     .sort((a, b) => b.km_rodado - a.km_rodado)
 
-  const chartMonthlyData = vehicleMileageRanking.slice(0, 8).map(v => ({...v, km_rodado: v.km_rodado}))
+  const chartMonthlyData = vehicleMileageRanking.slice(0, 8).map(v => ({
+    vehicle_id: v.vehicle_id,
+    placa: v.placa,
+    modelo: v.modelo,
+    km_rodado: v.km_rodado
+  }))
 
   return (
     <div className="min-h-screen bg-[#eef2f5] p-6 text-[#22313f]">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* HEADER */}
         <div className="rounded-md border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Painel do gestor</p>
               <h1 className="mt-2 text-2xl font-bold text-slate-800">Visão geral da operação</h1>
             </div>
-            {/* NOTIFICAÇÕES */}
             <div className="flex items-center gap-3">
               <details className="relative">
                 <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#2f6eea]">
@@ -223,19 +218,22 @@ export default async function GestorHomePage() {
                 </summary>
                 <div className="absolute right-0 z-30 mt-3 w-[360px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                   <div className="max-h-[420px] overflow-y-auto p-3 space-y-2">
-                    {notificationItems.map(item => (
-                      <Link key={item.id} href={item.href} className={`block rounded-lg border p-3 ${item.tone === 'red' ? 'bg-red-50' : 'bg-amber-50'}`}>
-                        <p className="text-sm font-bold text-slate-800">{item.title}</p>
-                        <p className="text-xs text-slate-600">{item.description}</p>
-                      </Link>
-                    ))}
+                    {notificationItems.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-slate-500">Nenhuma notificação.</div>
+                    ) : (
+                      notificationItems.map(item => (
+                        <Link key={item.id} href={item.href} className={`block rounded-lg border p-3 ${item.tone === 'red' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
+                          <p className="text-sm font-bold text-slate-800">{item.title}</p>
+                          <p className="text-xs text-slate-600">{item.description}</p>
+                        </Link>
+                      ))
+                    )}
                   </div>
                 </div>
               </details>
             </div>
           </div>
 
-          {/* CARDS INDICADORES */}
           <div className="p-6">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-md bg-[#35c6cf] p-4 text-white">
@@ -258,7 +256,6 @@ export default async function GestorHomePage() {
           </div>
         </div>
 
-        {/* GRÁFICOS */}
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-800">Hodômetro total</h2>
