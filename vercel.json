@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/inspecoes-atrasadas",
+      "schedule": "0 8 * * 1"
+    }
+  ]
+}
