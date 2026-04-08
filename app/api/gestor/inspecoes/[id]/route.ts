@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabase-admin'
 
+// Ajustamos o tipo para refletir que params agora é uma Promise
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    // É necessário aguardar a Promise de params ser resolvida
+    const { id } = await context.params
 
     if (!id) {
       return NextResponse.json({ error: 'ID da inspeção é obrigatório.' }, { status: 400 })
     }
 
-    // 1. Deletamos a inspeção (isso disparará o delete nas fotos se houver Cascade)
+    // Deletamos a inspeção
     const { error } = await supabaseAdmin
       .from('inspections')
       .delete()
