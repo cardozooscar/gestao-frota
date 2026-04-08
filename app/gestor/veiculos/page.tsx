@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { Car, Plus, Trash2, Image as ImageIcon, Power, Settings2, AlertCircle } from 'lucide-react'
 
+// tipagem Vehicle unificada para usar 'url_foto'
 type Vehicle = {
   id: string
   placa: string
   modelo: string
   tipo: string // 'Próprio' ou 'Alugado'
-  foto_url: string
+  url_foto: string // campo condizente com o banco de dados
   ativo: boolean
 }
 
@@ -19,16 +20,16 @@ export default function VeiculosPage() {
   const [salvando, setSalvando] = useState(false)
   const [filtro, setFiltro] = useState<'ativos' | 'inativos'>('ativos')
 
-  // Estados do formulário
+  // Estados do formulário unificados para usar 'urlFoto' no frontend
   const [placa, setPlaca] = useState('')
   const [modelo, setModelo] = useState('')
   const [tipo, setTipo] = useState('Próprio')
-  const [fotoUrl, setFotoUrl] = useState('')
+  const [urlFoto, setUrlFoto] = useState('') // estado no frontend unificado
 
   async function fetchVeiculos() {
     const { data } = await supabase
       .from('vehicles')
-      .select('*')
+      .select('*') // o select('*') está correto
       .order('created_at', { ascending: false })
     
     if (data) setVeiculos(data as Vehicle[])
@@ -43,12 +44,13 @@ export default function VeiculosPage() {
     e.preventDefault()
     setSalvando(true)
 
+    // insert unificado para inserir no campo 'url_foto' do banco
     const { error } = await supabase.from('vehicles').insert({
       placa: placa.toUpperCase(),
       modelo,
       tipo,
-      foto_url: fotoUrl,
-      ativo: true, // Por padrão, entra como ativo
+      url_foto: urlFoto, // inserindo no campo 'url_foto' do banco
+      ativo: true, 
       is_active: true
     })
 
@@ -56,7 +58,7 @@ export default function VeiculosPage() {
       setPlaca('')
       setModelo('')
       setTipo('Próprio')
-      setFotoUrl('')
+      setUrlFoto('') // resetando o estado correto no frontend
       fetchVeiculos()
     } else {
       alert('Erro ao cadastrar veículo: ' + error.message)
@@ -89,7 +91,7 @@ export default function VeiculosPage() {
     <div className="min-h-screen bg-[#02052b] text-white p-4 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         
-        {/* HEADER DA PÁGINA */}
+        {/* HEADER DA PÁGINA (Pode manter o mesmo do código anterior) */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
@@ -130,7 +132,7 @@ export default function VeiculosPage() {
               </select>
               <input 
                 type="url" placeholder="URL da imagem (opcional)" 
-                value={fotoUrl} onChange={e => setFotoUrl(e.target.value)}
+                value={urlFoto} onChange={e => setUrlFoto(e.target.value)} // usando estado correto
                 className="w-full bg-[#070b3f] border border-white/10 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:border-[#2f6eea] outline-none transition-all"
               />
             </div>
@@ -145,38 +147,7 @@ export default function VeiculosPage() {
 
         {/* LISTAGEM DE VEÍCULOS */}
         <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md">
-          
-          {/* Cabeçalho e Filtros da Listagem */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 border-b border-white/5 pb-6">
-            <div>
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Settings2 size={20} className="text-blue-400" /> Veículos cadastrados
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">Visualize e gerencie os veículos disponíveis no sistema.</p>
-            </div>
-
-            <div className="flex items-center gap-4 text-xs font-bold">
-              <span className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-slate-400">Total: {veiculos.length}</span>
-              <span className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-emerald-400">Ativos: {qtdAtivos}</span>
-              <span className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg text-red-400">Inativos: {qtdInativos}</span>
-            </div>
-          </div>
-
-          {/* Abas de Navegação */}
-          <div className="flex gap-2 mb-6 bg-[#070b3f] p-1 rounded-xl w-fit border border-white/5">
-            <button 
-              onClick={() => setFiltro('ativos')}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${filtro === 'ativos' ? 'bg-[#2f6eea] text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-            >
-              Ativos ({qtdAtivos})
-            </button>
-            <button 
-              onClick={() => setFiltro('inativos')}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${filtro === 'inativos' ? 'bg-[#2f6eea] text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-            >
-              Inativos ({qtdInativos})
-            </button>
-          </div>
+          {/* ...cabeçalho e filtros da listagem (pode manter os mesmos)... */}
 
           {/* Grid de Cards */}
           {loading ? (
@@ -191,52 +162,19 @@ export default function VeiculosPage() {
               {veiculosFiltrados.map((v) => (
                 <div key={v.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20 hover:shadow-2xl hover:shadow-blue-500/10">
                   
-                  {/* Área da Imagem */}
+                  {/* Área da Imagem (UNIFICADO AQUI) */}
                   <div className="aspect-video relative bg-[#070b3f] flex items-center justify-center overflow-hidden">
-                    {v.foto_url ? (
-                      <img src={v.foto_url} alt={v.modelo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-500" />
+                    {v.url_foto ? ( // lendo o campo 'url_foto' do banco
+                      <img src={v.url_foto} alt={v.modelo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity group-hover:scale-105 duration-500" />
                     ) : (
                       <Car size={48} className="text-white/10" />
                     )}
                     
-                    {/* Badges Flutuantes */}
-                    <div className="absolute top-3 left-3 flex gap-2">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${v.tipo === 'Alugado' ? 'bg-purple-500/80 text-white backdrop-blur-md' : 'bg-blue-500/80 text-white backdrop-blur-md'}`}>
-                        {v.tipo || 'Próprio'}
-                      </span>
-                    </div>
-                    
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${v.ativo ? 'bg-emerald-500/80 text-white' : 'bg-red-500/80 text-white'}`}>
-                        {v.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </div>
+                    {/* ...Badges flutuantes (pode manter os mesmos)... */}
                   </div>
 
                   {/* Informações do Veículo */}
-                  <div className="p-5">
-                    <h3 className="text-2xl font-black tracking-tight text-white">{v.placa}</h3>
-                    <p className="text-sm font-medium text-slate-400 mt-1">{v.modelo}</p>
-                    
-                    {/* Ações */}
-                    <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
-                      <button 
-                        onClick={() => toggleAtivo(v.id, v.ativo)}
-                        className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg transition-colors ${v.ativo ? 'text-orange-400 hover:bg-orange-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'}`}
-                      >
-                        <Power size={14} />
-                        {v.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleExcluir(v.id)}
-                        className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
+                  {/* ...pode manter o resto... */}
                 </div>
               ))}
             </div>
