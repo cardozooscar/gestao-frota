@@ -32,27 +32,19 @@ export default function VeiculosPage() {
           .from('inspections')
           .select('vehicle_id, inspection_date')
 
-        // 3. Cruza os dados manualmente (Método à prova de falhas do Supabase)
+        // 3. Cruza os dados manualmente
         const veiculosProcessados = vData?.map(v => {
-          // Pega todas as inspeções deste carro específico
           const inspecoesDoCarro = iData?.filter(i => i.vehicle_id === v.id) || [];
-          
           let ultimaInspecaoObjeto: Date | null = null;
           
           if (inspecoesDoCarro.length > 0) {
-            // Descobre qual é a data mais recente (compara timestamps)
             const datasTimestamps = inspecoesDoCarro.map(i => new Date(i.inspection_date).getTime());
             const maxTimestamp = Math.max(...datasTimestamps);
-            
-            // CORREÇÃO DO FUSO HORÁRIO: Pega a string AAAA-MM-DD da inspeção mais recente
             const inspecaoMaisRecente = inspecoesDoCarro.find(i => new Date(i.inspection_date).getTime() === maxTimestamp);
             
             if (inspecaoMaisRecente?.inspection_date) {
-                // Quebra a string "2023-10-27" em partes [2023, 10, 27]
                 const parts = inspecaoMaisRecente.inspection_date.split('-');
                 if (parts.length === 3) {
-                    // Cria uma data LOCAL à meia-noite para evitar o shift do fuso horário
-                    // Mês é base-0 no JS (Janeiro = 0), por isso o -1
                     ultimaInspecaoObjeto = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
                 }
             }
@@ -72,39 +64,31 @@ export default function VeiculosPage() {
     fetchVeiculos()
   }, [])
 
-  // Lógica de Filtragem (Ativa/Inativa, Placa, Recentes)
+  // Lógica de Filtragem
   const veiculosFiltrados = veiculos.filter(v => {
-    // 1. Filtro da Aba (Ativo/Inativo)
     const isAtivo = v.ativo === true;
     if (abaAtual === 'ativos' && !isAtivo) return false;
     if (abaAtual === 'inativos' && isAtivo) return false;
 
-    // 2. Filtro de Placa (Busca)
     if (buscaPlaca && !v.placa.toLowerCase().includes(buscaPlaca.toLowerCase())) {
       return false;
     }
 
-    // 3. Filtro de Inspeções Recentes (Últimos 7 dias)
     if (filtroRecentes) {
-      if (!v.ultimaInspecaoObjeto) return false; // Se nunca foi inspecionado, esconde
+      if (!v.ultimaInspecaoObjeto) return false; 
       
       const hoje = new Date();
-      // Meia-noite de hoje para comparação justa
       hoje.setHours(0, 0, 0, 0);
-      
       const seteDiasAtras = new Date();
       seteDiasAtras.setDate(hoje.getDate() - 7);
       seteDiasAtras.setHours(0, 0, 0, 0);
       
-      if (v.ultimaInspecaoObjeto < seteDiasAtras) {
-        return false; // Se a última inspeção for mais velha que 7 dias, esconde
-      }
+      if (v.ultimaInspecaoObjeto < seteDiasAtras) return false; 
     }
 
     return true;
   })
 
-  // Contadores para o Header
   const totalAtivos = veiculos.filter(v => v.ativo).length
   const totalInativos = veiculos.filter(v => !v.ativo).length
 
@@ -120,7 +104,6 @@ export default function VeiculosPage() {
           <p className="text-slate-400 mt-1">Visualize rapidamente os veículos disponíveis no sistema.</p>
         </div>
         
-        {/* Contadores */}
         <div className="flex gap-2 text-xs font-bold uppercase tracking-wider">
           <div className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2 rounded-lg">
             Total: {veiculos.length}
@@ -138,8 +121,6 @@ export default function VeiculosPage() {
         
         {/* BARRA DE FERRAMENTAS E FILTROS */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6 border-b border-white/10 pb-6">
-          
-          {/* Abas */}
           <div className="flex gap-2 w-full lg:w-auto bg-black/20 p-1 rounded-xl">
             <button 
               onClick={() => setAbaAtual('ativos')}
@@ -155,7 +136,6 @@ export default function VeiculosPage() {
             </button>
           </div>
 
-          {/* Novos Filtros: Busca e Recentes */}
           <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -180,7 +160,6 @@ export default function VeiculosPage() {
               {filtroRecentes ? 'Vistoriados (7 dias)' : 'Filtrar Recentes'}
             </button>
           </div>
-
         </div>
 
         {/* GRID DE VEÍCULOS */}
@@ -190,68 +169,72 @@ export default function VeiculosPage() {
           </div>
         ) : veiculosFiltrados.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {veiculosFiltrados.map((veiculo) => (
-              <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
-                
-                {/* Imagem do Carro */}
-                <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
-                  {/* Badges superiores */}
-                  <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
-                    {veiculo.tipo || 'PRÓPRIO'}
-                  </div>
-                  <div className={`absolute top-4 right-4 z-10 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${veiculo.ativo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
-                    {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
-                  </div>
+            {veiculosFiltrados.map((veiculo) => {
+              
+              // O PULO DO GATO: Busca inteligente da foto independente de como você nomeou no banco
+              const fotoVeiculo = veiculo.foto || veiculo.imagem || veiculo.foto_url || veiculo.image_url || veiculo.url_foto || veiculo.avatar;
+
+              return (
+                <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
                   
-                  {/* Carrega foto real se existir */}
-                  {veiculo.image_url ? (
-                    <img 
-                      src={veiculo.image_url} 
-                      alt={veiculo.modelo} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-white/10">
-                        <Car size={80} />
-                        <span className="text-[10px] font-bold uppercase mt-2">Sem Foto</span>
+                  {/* Imagem do Carro */}
+                  <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
+                    <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
+                      {veiculo.tipo || 'PRÓPRIO'}
                     </div>
-                  )}
-                </div>
-
-                {/* Informações */}
-                <div className="p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
-                    <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
+                    <div className={`absolute top-4 right-4 z-10 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${veiculo.ativo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                      {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
+                    </div>
                     
-                    {/* Exibe o status da última inspeção */}
-                    <div className="mt-4 flex items-center gap-2">
-                      {veiculo.ultimaInspecaoObjeto ? (
-                         <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
-                           <Activity size={12} /> Última: {veiculo.ultimaInspecaoObjeto.toLocaleDateString('pt-BR')}
-                         </span>
-                      ) : (
-                         <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 flex items-center gap-1">
-                           <Activity size={12} /> Sem vistorias
-                         </span>
-                      )}
-                    </div>
+                    {/* Valida se a foto foi encontrada com algum dos nomes comuns */}
+                    {fotoVeiculo ? (
+                      <img 
+                        src={fotoVeiculo} 
+                        alt={veiculo.modelo} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-white/10">
+                          <Car size={80} />
+                          <span className="text-[10px] font-bold uppercase mt-2">Sem Foto</span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
-                    <button className="text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 uppercase tracking-wider transition-colors">
-                      <Power size={14} /> Desativar
-                    </button>
-                    <Link 
-                      href={`/gestor/veiculos/${veiculo.id}`}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase tracking-wider transition-colors"
-                    >
-                      Detalhes <ChevronRight size={14} />
-                    </Link>
+                  {/* Informações */}
+                  <div className="p-6 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
+                      <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
+                      
+                      <div className="mt-4 flex items-center gap-2">
+                        {veiculo.ultimaInspecaoObjeto ? (
+                           <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
+                             <Activity size={12} /> Última: {veiculo.ultimaInspecaoObjeto.toLocaleDateString('pt-BR')}
+                           </span>
+                        ) : (
+                           <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 flex items-center gap-1">
+                             <Activity size={12} /> Sem vistorias
+                           </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
+                      <button className="text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 uppercase tracking-wider transition-colors">
+                        <Power size={14} /> Desativar
+                      </button>
+                      <Link 
+                        href={`/gestor/veiculos/${veiculo.id}`}
+                        className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase tracking-wider transition-colors"
+                      >
+                        Detalhes <ChevronRight size={14} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-20 text-slate-500">
