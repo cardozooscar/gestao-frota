@@ -18,25 +18,33 @@ export default function VeiculosPage() {
     async function fetchVeiculos() {
       try {
         setLoading(true)
-        // Busca os veículos E as datas das inspeções para sabermos qual é a mais recente
-        const { data, error } = await supabase
+        
+        // 1. Busca os veículos puros (sem joins, para não dar erro no Supabase)
+        const { data: vData, error: vError } = await supabase
           .from('vehicles')
-          .select(`
-            *,
-            inspections ( inspection_date )
-          `)
+          .select('*')
           .order('placa', { ascending: true })
 
-        if (error) throw error
+        if (vError) throw vError
 
-        // Processa os dados para descobrir a data da última inspeção de cada carro
-        const veiculosProcessados = data?.map(v => {
+        // 2. Busca apenas as datas das inspeções para cruzar depois
+        const { data: iData } = await supabase
+          .from('inspections')
+          .select('vehicle_id, inspection_date')
+
+        // 3. Cruza os dados manualmente (Método à prova de falhas)
+        const veiculosProcessados = vData?.map(v => {
+          // Pega todas as inspeções deste carro específico
+          const inspecoesDoCarro = iData?.filter(i => i.vehicle_id === v.id) || [];
+          
           let ultimaInspecao = null;
-          if (v.inspections && v.inspections.length > 0) {
-            // Pega a data mais recente
-            const datas = v.inspections.map((i: any) => new Date(i.inspection_date).getTime());
+          
+          if (inspecoesDoCarro.length > 0) {
+            // Descobre qual é a data mais recente
+            const datas = inspecoesDoCarro.map(i => new Date(i.inspection_date).getTime());
             ultimaInspecao = new Date(Math.max(...datas));
           }
+          
           return { ...v, ultimaInspecao }
         })
 
@@ -168,7 +176,7 @@ export default function VeiculosPage() {
             {veiculosFiltrados.map((veiculo) => (
               <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
                 
-                {/* Imagem Placeholder (Ajuste conforme o seu banco de dados) */}
+                {/* Imagem Placeholder */}
                 <div className="relative h-48 bg-gradient-to-b from-white/5 to-transparent flex items-center justify-center p-4">
                   {/* Badges superiores */}
                   <div className="absolute top-4 left-4 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
@@ -178,7 +186,7 @@ export default function VeiculosPage() {
                     {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
                   </div>
                   
-                  {/* Ícone de Carro como fallback se não houver foto */}
+                  {/* Ícone de Carro - Altere aqui se tiver fotos reais dos carros cadastradas */}
                   <Car size={80} className="text-white/10 group-hover:scale-110 transition-transform duration-500" />
                 </div>
 
