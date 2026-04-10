@@ -19,7 +19,7 @@ export default function VeiculosPage() {
       try {
         setLoading(true)
         
-        // 1. Busca os veículos puros (sem joins, para não dar erro no Supabase)
+        // 1. Busca os veículos puros
         const { data: vData, error: vError } = await supabase
           .from('vehicles')
           .select('*')
@@ -32,20 +32,33 @@ export default function VeiculosPage() {
           .from('inspections')
           .select('vehicle_id, inspection_date')
 
-        // 3. Cruza os dados manualmente (Método à prova de falhas)
+        // 3. Cruza os dados manualmente (Método à prova de falhas do Supabase)
         const veiculosProcessados = vData?.map(v => {
           // Pega todas as inspeções deste carro específico
           const inspecoesDoCarro = iData?.filter(i => i.vehicle_id === v.id) || [];
           
-          let ultimaInspecao = null;
+          let ultimaInspecaoObjeto: Date | null = null;
           
           if (inspecoesDoCarro.length > 0) {
-            // Descobre qual é a data mais recente
-            const datas = inspecoesDoCarro.map(i => new Date(i.inspection_date).getTime());
-            ultimaInspecao = new Date(Math.max(...datas));
+            // Descobre qual é a data mais recente (compara timestamps)
+            const datasTimestamps = inspecoesDoCarro.map(i => new Date(i.inspection_date).getTime());
+            const maxTimestamp = Math.max(...datasTimestamps);
+            
+            // CORREÇÃO DO FUSO HORÁRIO: Pega a string AAAA-MM-DD da inspeção mais recente
+            const inspecaoMaisRecente = inspecoesDoCarro.find(i => new Date(i.inspection_date).getTime() === maxTimestamp);
+            
+            if (inspecaoMaisRecente?.inspection_date) {
+                // Quebra a string "2023-10-27" em partes [2023, 10, 27]
+                const parts = inspecaoMaisRecente.inspection_date.split('-');
+                if (parts.length === 3) {
+                    // Cria uma data LOCAL à meia-noite para evitar o shift do fuso horário
+                    // Mês é base-0 no JS (Janeiro = 0), por isso o -1
+                    ultimaInspecaoObjeto = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                }
+            }
           }
           
-          return { ...v, ultimaInspecao }
+          return { ...v, ultimaInspecaoObjeto }
         })
 
         setVeiculos(veiculosProcessados || [])
@@ -59,7 +72,7 @@ export default function VeiculosPage() {
     fetchVeiculos()
   }, [])
 
-  // Lógica de Filtragem
+  // Lógica de Filtragem (Ativa/Inativa, Placa, Recentes)
   const veiculosFiltrados = veiculos.filter(v => {
     // 1. Filtro da Aba (Ativo/Inativo)
     const isAtivo = v.ativo === true;
@@ -73,13 +86,17 @@ export default function VeiculosPage() {
 
     // 3. Filtro de Inspeções Recentes (Últimos 7 dias)
     if (filtroRecentes) {
-      if (!v.ultimaInspecao) return false; // Se nunca foi inspecionado, esconde
+      if (!v.ultimaInspecaoObjeto) return false; // Se nunca foi inspecionado, esconde
       
       const hoje = new Date();
+      // Meia-noite de hoje para comparação justa
+      hoje.setHours(0, 0, 0, 0);
+      
       const seteDiasAtras = new Date();
       seteDiasAtras.setDate(hoje.getDate() - 7);
+      seteDiasAtras.setHours(0, 0, 0, 0);
       
-      if (v.ultimaInspecao < seteDiasAtras) {
+      if (v.ultimaInspecaoObjeto < seteDiasAtras) {
         return false; // Se a última inspeção for mais velha que 7 dias, esconde
       }
     }
@@ -176,18 +193,30 @@ export default function VeiculosPage() {
             {veiculosFiltrados.map((veiculo) => (
               <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
                 
-                {/* Imagem Placeholder */}
-                <div className="relative h-48 bg-gradient-to-b from-white/5 to-transparent flex items-center justify-center p-4">
+                {/* Imagem do Carro (CORRIGIDA) */}
+                <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
                   {/* Badges superiores */}
-                  <div className="absolute top-4 left-4 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
+                  <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
                     {veiculo.tipo || 'PRÓPRIO'}
                   </div>
-                  <div className={`absolute top-4 right-4 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${veiculo.ativo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                  <div className={`absolute top-4 right-4 z-10 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${veiculo.ativo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
                     {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
                   </div>
                   
-                  {/* Ícone de Carro - Altere aqui se tiver fotos reais dos carros cadastradas */}
-                  <Car size={80} className="text-white/10 group-hover:scale-110 transition-transform duration-500" />
+                  {/* Carrega foto real se existir (assumindo campo image_url) */}
+                  {veiculo.image_url ? (
+                    <img 
+                      src={veiculo.image_url} 
+                      alt={veiculo.modelo} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    {/* Fallback se não houver foto */}
+                    <div className="flex flex-col items-center justify-center text-white/10">
+                        <Car size={80} />
+                        <span className="text-[10px] font-bold uppercase mt-2">Sem Foto</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Informações */}
@@ -196,11 +225,11 @@ export default function VeiculosPage() {
                     <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
                     <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
                     
-                    {/* Exibe o status da última inspeção */}
+                    {/* Exibe o status da última inspeção (Data Corrigida) */}
                     <div className="mt-4 flex items-center gap-2">
-                      {veiculo.ultimaInspecao ? (
+                      {veiculo.ultimaInspecaoObjeto ? (
                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
-                           <Activity size={12} /> Última: {veiculo.ultimaInspecao.toLocaleDateString('pt-BR')}
+                           <Activity size={12} /> Última: {veiculo.ultimaInspecaoObjeto.toLocaleDateString('pt-BR')}
                          </span>
                       ) : (
                          <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 flex items-center gap-1">
