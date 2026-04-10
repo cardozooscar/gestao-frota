@@ -32,8 +32,14 @@ export default function VeiculosPage() {
           .from('inspections')
           .select('vehicle_id, inspection_date')
 
-        // 3. Cruza os dados manualmente
+        // 3. BUSCA NOVA: Pega a tabela de modelos para carregar as fotos
+        const { data: mData } = await supabase
+          .from('vehicle_models')
+          .select('model_name, image_url')
+
+        // 4. Cruza todos os dados manualmente (Método à prova de falhas)
         const veiculosProcessados = vData?.map(v => {
+          // --- LÓGICA DA DATA DA VISTORIA ---
           const inspecoesDoCarro = iData?.filter(i => i.vehicle_id === v.id) || [];
           let ultimaInspecaoObjeto: Date | null = null;
           
@@ -49,8 +55,18 @@ export default function VeiculosPage() {
                 }
             }
           }
+
+          // --- LÓGICA DA FOTO DO MODELO ---
+          // Procura o modelo na tabela vehicle_models (ignorando maiúsculas/minúsculas para evitar erros)
+          const modeloEncontrado = mData?.find(
+            m => m.model_name.toLowerCase() === v.modelo.toLowerCase()
+          );
           
-          return { ...v, ultimaInspecaoObjeto }
+          return { 
+            ...v, 
+            ultimaInspecaoObjeto, 
+            image_url: modeloEncontrado?.image_url || null // Vincula a foto!
+          }
         })
 
         setVeiculos(veiculosProcessados || [])
@@ -64,7 +80,7 @@ export default function VeiculosPage() {
     fetchVeiculos()
   }, [])
 
-  // Lógica de Filtragem
+  // Lógica de Filtragem (Ativa/Inativa, Placa, Recentes)
   const veiculosFiltrados = veiculos.filter(v => {
     const isAtivo = v.ativo === true;
     if (abaAtual === 'ativos' && !isAtivo) return false;
@@ -89,6 +105,7 @@ export default function VeiculosPage() {
     return true;
   })
 
+  // Contadores para o Header
   const totalAtivos = veiculos.filter(v => v.ativo).length
   const totalInativos = veiculos.filter(v => !v.ativo).length
 
@@ -104,6 +121,7 @@ export default function VeiculosPage() {
           <p className="text-slate-400 mt-1">Visualize rapidamente os veículos disponíveis no sistema.</p>
         </div>
         
+        {/* Contadores */}
         <div className="flex gap-2 text-xs font-bold uppercase tracking-wider">
           <div className="bg-white/5 border border-white/10 text-slate-300 px-4 py-2 rounded-lg">
             Total: {veiculos.length}
@@ -121,6 +139,8 @@ export default function VeiculosPage() {
         
         {/* BARRA DE FERRAMENTAS E FILTROS */}
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6 border-b border-white/10 pb-6">
+          
+          {/* Abas */}
           <div className="flex gap-2 w-full lg:w-auto bg-black/20 p-1 rounded-xl">
             <button 
               onClick={() => setAbaAtual('ativos')}
@@ -136,6 +156,7 @@ export default function VeiculosPage() {
             </button>
           </div>
 
+          {/* Novos Filtros: Busca e Recentes */}
           <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -169,72 +190,67 @@ export default function VeiculosPage() {
           </div>
         ) : veiculosFiltrados.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {veiculosFiltrados.map((veiculo) => {
-              
-              // O PULO DO GATO: Busca inteligente da foto independente de como você nomeou no banco
-              const fotoVeiculo = veiculo.foto || veiculo.imagem || veiculo.foto_url || veiculo.image_url || veiculo.url_foto || veiculo.avatar;
-
-              return (
-                <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
+            {veiculosFiltrados.map((veiculo) => (
+              <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
+                
+                {/* Imagem do Carro (Agora puxando da tabela cruzada!) */}
+                <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
+                  <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
+                    {veiculo.tipo || 'PRÓPRIO'}
+                  </div>
+                  <div className={`absolute top-4 right-4 z-10 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${veiculo.ativo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                    {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
+                  </div>
                   
-                  {/* Imagem do Carro */}
-                  <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
-                    <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
-                      {veiculo.tipo || 'PRÓPRIO'}
+                  {/* Renderiza a imagem do GitHub se o link for encontrado na tabela vehicle_models */}
+                  {veiculo.image_url ? (
+                    <img 
+                      src={veiculo.image_url} 
+                      alt={veiculo.modelo} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-white/10">
+                        <Car size={80} />
+                        <span className="text-[10px] font-bold uppercase mt-2">Sem Foto</span>
                     </div>
-                    <div className={`absolute top-4 right-4 z-10 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${veiculo.ativo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
-                      {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
-                    </div>
+                  )}
+                </div>
+
+                {/* Informações */}
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
+                    <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
                     
-                    {/* Valida se a foto foi encontrada com algum dos nomes comuns */}
-                    {fotoVeiculo ? (
-                      <img 
-                        src={fotoVeiculo} 
-                        alt={veiculo.modelo} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-white/10">
-                          <Car size={80} />
-                          <span className="text-[10px] font-bold uppercase mt-2">Sem Foto</span>
-                      </div>
-                    )}
+                    {/* Exibe o status da última inspeção */}
+                    <div className="mt-4 flex items-center gap-2">
+                      {veiculo.ultimaInspecaoObjeto ? (
+                         <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
+                           <Activity size={12} /> Última: {veiculo.ultimaInspecaoObjeto.toLocaleDateString('pt-BR')}
+                         </span>
+                      ) : (
+                         <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 flex items-center gap-1">
+                           <Activity size={12} /> Sem vistorias
+                         </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Informações */}
-                  <div className="p-6 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
-                      <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
-                      
-                      <div className="mt-4 flex items-center gap-2">
-                        {veiculo.ultimaInspecaoObjeto ? (
-                           <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
-                             <Activity size={12} /> Última: {veiculo.ultimaInspecaoObjeto.toLocaleDateString('pt-BR')}
-                           </span>
-                        ) : (
-                           <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded border border-amber-400/20 flex items-center gap-1">
-                             <Activity size={12} /> Sem vistorias
-                           </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
-                      <button className="text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 uppercase tracking-wider transition-colors">
-                        <Power size={14} /> Desativar
-                      </button>
-                      <Link 
-                        href={`/gestor/veiculos/${veiculo.id}`}
-                        className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase tracking-wider transition-colors"
-                      >
-                        Detalhes <ChevronRight size={14} />
-                      </Link>
-                    </div>
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
+                    <button className="text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 uppercase tracking-wider transition-colors">
+                      <Power size={14} /> Desativar
+                    </button>
+                    <Link 
+                      href={`/gestor/veiculos/${veiculo.id}`}
+                      className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase tracking-wider transition-colors"
+                    >
+                      Detalhes <ChevronRight size={14} />
+                    </Link>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-20 text-slate-500">
