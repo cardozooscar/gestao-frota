@@ -193,7 +193,7 @@ export default function VeiculosPage() {
             {veiculosFiltrados.map((veiculo) => (
               <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
                 
-                {/* Imagem do Carro (CORRIGIDA) */}
+                {/* Imagem do Carro */}
                 <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
                   {/* Badges superiores */}
                   <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
@@ -203,7 +203,7 @@ export default function VeiculosPage() {
                     {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
                   </div>
                   
-                  {/* Carrega foto real se existir (assumindo campo image_url) */}
+                  {/* Carrega foto real se existir */}
                   {veiculo.image_url ? (
                     <img 
                       src={veiculo.image_url} 
@@ -211,7 +211,6 @@ export default function VeiculosPage() {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (
-                    {/* Fallback se não houver foto */}
                     <div className="flex flex-col items-center justify-center text-white/10">
                         <Car size={80} />
                         <span className="text-[10px] font-bold uppercase mt-2">Sem Foto</span>
@@ -225,7 +224,7 @@ export default function VeiculosPage() {
                     <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
                     <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
                     
-                    {/* Exibe o status da última inspeção (Data Corrigida) */}
+                    {/* Exibe o status da última inspeção */}
                     <div className="mt-4 flex items-center gap-2">
                       {veiculo.ultimaInspecaoObjeto ? (
                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
