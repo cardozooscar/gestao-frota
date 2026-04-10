@@ -27,7 +27,7 @@ export default function VeiculoDetalhesPage() {
 
         if (vData) setVehicle(vData)
 
-        // 2. A BUSCA CORRIGIDA: Traz as inspeções E as fotos vinculadas
+        // 2. Busca as inspeções, perfil do técnico e TODAS as fotos
         const { data: iData, error } = await supabase
           .from('inspections')
           .select(`
@@ -109,7 +109,7 @@ export default function VeiculoDetalhesPage() {
                 </div>
                 <div className="text-right">
                   <div className="bg-slate-800 text-white px-4 py-2 rounded-xl font-black text-lg mb-2">
-                    {inspection.odometro?.toLocaleString('pt-BR')} KM
+                    {inspection.odometer?.toLocaleString('pt-BR')} KM
                   </div>
                   <button 
                     onClick={() => handleDelete(inspection.id)}
@@ -120,7 +120,7 @@ export default function VeiculoDetalhesPage() {
                 </div>
               </div>
 
-              {/* BLOCO DE FOTOS NOVO AQUI */}
+              {/* Registro Fotográfico (Renderiza TODAS as fotos do banco dinamicamente) */}
               <div className="mb-8">
                 <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-wider">
                   <Camera size={18} className="text-blue-500" /> Registro Fotográfico
@@ -150,7 +150,7 @@ export default function VeiculoDetalhesPage() {
                 )}
               </div>
 
-              {/* Grid de Checklists (Visual baseado no seu print) */}
+              {/* Grid de Checklists */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 {/* Segurança */}
@@ -159,12 +159,22 @@ export default function VeiculoDetalhesPage() {
                     <ShieldCheck size={18} className="text-blue-500" /> Itens de Segurança
                   </h4>
                   <div className="space-y-3">
-                    {['Triângulo', 'Macaco', 'Chave de Roda', 'Estepe'].map((item) => (
-                      <div key={item} className="flex justify-between items-center">
-                        <span className="text-slate-600 text-sm font-medium">{item}</span>
-                        <CheckCircle2 size={18} className="text-emerald-500" />
-                      </div>
-                    ))}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 text-sm font-medium">Triângulo</span>
+                      {inspection.item_triangulo ? <CheckCircle2 size={18} className="text-emerald-500" /> : <span className="text-red-500 font-bold text-xs">FALTA</span>}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 text-sm font-medium">Macaco</span>
+                      {inspection.item_macaco ? <CheckCircle2 size={18} className="text-emerald-500" /> : <span className="text-red-500 font-bold text-xs">FALTA</span>}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 text-sm font-medium">Chave de Roda</span>
+                      {inspection.item_chave_roda ? <CheckCircle2 size={18} className="text-emerald-500" /> : <span className="text-red-500 font-bold text-xs">FALTA</span>}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600 text-sm font-medium">Estepe</span>
+                      {inspection.item_estepe ? <CheckCircle2 size={18} className="text-emerald-500" /> : <span className="text-red-500 font-bold text-xs">FALTA</span>}
+                    </div>
                   </div>
                 </div>
 
@@ -174,12 +184,22 @@ export default function VeiculoDetalhesPage() {
                     <Activity size={18} className="text-orange-500" /> Condições do Motor
                   </h4>
                   <div className="space-y-3">
-                    {['Nível do Óleo', 'Freios', 'Suspensão', 'Faróis'].map((item) => (
-                      <div key={item} className="flex flex-col">
-                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">{item}</span>
-                        <span className="text-slate-700 font-semibold text-sm">OK</span>
-                      </div>
-                    ))}
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Nível do Óleo</span>
+                      <span className="text-slate-700 font-semibold text-sm">{inspection.motor_oil_level || 'Não informado'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Freios</span>
+                      <span className="text-slate-700 font-semibold text-sm">{inspection.motor_brakes || 'Não informado'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Suspensão</span>
+                      <span className="text-slate-700 font-semibold text-sm">{inspection.motor_suspension || 'Não informado'}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Faróis</span>
+                      <span className="text-slate-700 font-semibold text-sm">{inspection.motor_headlights || 'Não informado'}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -189,28 +209,46 @@ export default function VeiculoDetalhesPage() {
                     <Droplets size={18} className="text-cyan-500" /> Higienização
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
-                    {['Tapetes', 'Água', 'Para-brisa', 'Lataria'].map((item) => (
-                      <div key={item} className="border border-slate-100 rounded-lg p-2 text-center bg-slate-50">
-                        <span className="block text-slate-500 text-[10px] font-bold mb-1">{item}</span>
-                        <span className="block text-emerald-500 text-xs font-black">OK</span>
-                      </div>
-                    ))}
+                    <div className="border border-slate-100 rounded-lg p-2 text-center bg-slate-50">
+                      <span className="block text-slate-500 text-[10px] font-bold mb-1">Tapetes</span>
+                      <span className={`block text-xs font-black ${inspection.cleaning_mats ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {inspection.cleaning_mats ? 'OK' : 'SUJO'}
+                      </span>
+                    </div>
+                    <div className="border border-slate-100 rounded-lg p-2 text-center bg-slate-50">
+                      <span className="block text-slate-500 text-[10px] font-bold mb-1">Água</span>
+                      <span className={`block text-xs font-black ${inspection.cleaning_water ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {inspection.cleaning_water ? 'OK' : 'FALTA'}
+                      </span>
+                    </div>
+                    <div className="border border-slate-100 rounded-lg p-2 text-center bg-slate-50">
+                      <span className="block text-slate-500 text-[10px] font-bold mb-1">Para-brisa</span>
+                      <span className={`block text-xs font-black ${inspection.cleaning_windshield ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {inspection.cleaning_windshield ? 'OK' : 'SUJO'}
+                      </span>
+                    </div>
+                    <div className="border border-slate-100 rounded-lg p-2 text-center bg-slate-50">
+                      <span className="block text-slate-500 text-[10px] font-bold mb-1">Lataria</span>
+                      <span className={`block text-xs font-black ${inspection.cleaning_bodywork ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {inspection.cleaning_bodywork ? 'OK' : 'SUJO'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Observações */}
+              {/* Observações Dinâmicas Corrigidas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                 <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                  <span className="text-blue-600 text-[10px] font-bold uppercase tracking-wider">Observações Gerais</span>
+                  <span className="text-blue-600 text-[10px] font-bold uppercase tracking-wider">Observações Gerais (Segurança)</span>
                   <p className="text-slate-600 text-sm mt-1 italic">
-                    "{inspection.observacoes || 'Sem observações adicionais.'}"
+                    "{inspection.observation_general || 'Sem observações adicionais.'}"
                   </p>
                 </div>
                 <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
-                  <span className="text-orange-600 text-[10px] font-bold uppercase tracking-wider">Nota Técnica</span>
+                  <span className="text-orange-600 text-[10px] font-bold uppercase tracking-wider">Nota Técnica (Motor)</span>
                   <p className="text-slate-600 text-sm mt-1 italic">
-                    "Nenhuma anomalia relatada."
+                    "{inspection.motor_observation || 'Nenhuma anomalia relatada.'}"
                   </p>
                 </div>
               </div>
