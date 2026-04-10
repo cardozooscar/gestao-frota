@@ -260,7 +260,14 @@ export default function NovaInspecaoPage() {
                 <div key={item.label} className="relative">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 ml-1">{item.label}</label>
                   <div className={`relative flex items-center justify-center h-32 w-full rounded-2xl border-2 border-dashed transition-all ${item.file ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-white/5 border-white/10 text-slate-600 hover:border-white/20'}`}>
-                    <input type="file" accept="image/*" onChange={(e) => item.set(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    {/* ADICIONADO capture="environment" AQUI */}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment" 
+                      onChange={(e) => item.set(e.target.files?.[0] || null)} 
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                    />
                     <div className="flex flex-col items-center gap-2">
                       <Camera size={24} />
                       <span className="text-[10px] font-bold uppercase">{item.file ? 'Foto Selecionada' : 'Clique para tirar'}</span>
