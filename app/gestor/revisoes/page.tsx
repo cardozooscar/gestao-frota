@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { 
   Search, Plus, Wrench, Calendar, MapPin, Activity, 
-  DollarSign, FileText, X, Car, FileUp, Image as ImageIcon, Download 
+  DollarSign, FileText, X, Car, FileUp, Image as ImageIcon, Download, Trash2 
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -52,6 +52,22 @@ export default function RevisoesPage() {
   }
 
   useEffect(() => { fetchDados() }, [])
+
+  // Função para EXCLUIR revisão
+  async function handleDelete(id: string) {
+    if (confirm('Tem certeza que deseja excluir esta revisão? Esta ação não pode ser desfeita.')) {
+      try {
+        const { error } = await supabase.from('maintenance_records').delete().eq('id', id)
+        if (error) throw error
+        
+        // Remove da tela sem precisar recarregar a página toda
+        setRevisoes(revisoes.filter(r => r.id !== id))
+      } catch (error) {
+        console.error('Erro ao excluir:', error)
+        alert('Erro ao excluir a revisão.')
+      }
+    }
+  }
 
   // Função para gerar o PDF de uma revisão específica
   const gerarPDFRelatorio = (revisao: any) => {
@@ -164,7 +180,7 @@ export default function RevisoesPage() {
         ) : (
           <div className="space-y-4">
             {revisoesFiltradas.map((r) => (
-              <div key={r.id} className="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center">
+              <div key={r.id} className="bg-black/20 border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center hover:border-blue-500/30 transition-all">
                 <div className="flex-1">
                   <h3 className="text-xl font-black text-white uppercase">{r.vehicles?.placa} - {r.service_description}</h3>
                   <p className="text-slate-400 text-sm flex items-center gap-1"><MapPin size={14} /> {r.workshop_name} | {new Date(r.maintenance_date).toLocaleDateString('pt-BR')}</p>
@@ -177,18 +193,28 @@ export default function RevisoesPage() {
                 </div>
 
                 <div className="flex items-center gap-6">
-                  <div className="text-right">
+                  <div className="text-right hidden md:block">
                     <p className="text-emerald-400 font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(r.cost)}</p>
                     <p className="text-[10px] text-slate-500 font-bold uppercase">{r.odometer} KM</p>
                   </div>
-                  {/* BOTÃO DE DOWNLOAD PDF */}
-                  <button 
-                    onClick={() => gerarPDFRelatorio(r)}
-                    className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-blue-400 transition-all"
-                    title="Baixar Relatório PDF"
-                  >
-                    <Download size={20} />
-                  </button>
+                  
+                  {/* BOTÕES DE AÇÃO: DOWNLOAD E EXCLUIR */}
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => gerarPDFRelatorio(r)}
+                      className="p-3 bg-blue-500/10 hover:bg-blue-500/20 rounded-xl text-blue-400 transition-all"
+                      title="Baixar Relatório PDF"
+                    >
+                      <Download size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(r.id)}
+                      className="p-3 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-red-400 transition-all"
+                      title="Excluir Registro"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -220,7 +246,6 @@ export default function RevisoesPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <input type="text" placeholder="Serviço" className="col-span-2 bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" required value={formData.service_description} onChange={e => setFormData({...formData, service_description: e.target.value})} />
-                {/* CAMPO DE CUSTO CORRIGIDO AQUI */}
                 <input type="number" step="0.01" placeholder="Custo (R$)" className="bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" required value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} />
               </div>
 
