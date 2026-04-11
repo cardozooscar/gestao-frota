@@ -88,6 +88,18 @@ export default function TecnicoDashboard() {
     router.push('/login')
   }
 
+  // FUNÇÃO AUXILIAR: Corrige o problema do Fuso Horário subtrair 1 dia
+  const formatarDataSegura = (dataString: string) => {
+    if (!dataString) return 'Data Inválida';
+    const parts = dataString.split('-');
+    if (parts.length >= 3) {
+      // Cria a data LOCAL à meia-noite (Ano, Mês base 0, Dia)
+      const dataLocal = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      return dataLocal.toLocaleDateString('pt-BR');
+    }
+    return dataString;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#02052b] flex items-center justify-center">
@@ -156,7 +168,7 @@ export default function TecnicoDashboard() {
           </div>
         </div>
 
-        {/* BOTÃO PRINCIPAL - CAMINHO CORRIGIDO */}
+        {/* BOTÃO PRINCIPAL */}
         <Link 
           href={veiculoAtivo ? "/tecnico/nova-inspecao" : "#"}
           className={`w-full py-5 rounded-[24px] flex items-center justify-center gap-3 font-black text-lg transition-all shadow-lg active:scale-95 ${
@@ -189,8 +201,9 @@ export default function TecnicoDashboard() {
                     </div>
                     <div>
                       <p className="font-bold text-white leading-none">{ins.placa}</p>
+                      {/* AQUI ESTÁ A CORREÇÃO DA DATA */}
                       <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">
-                        {new Date(ins.inspection_date).toLocaleDateString('pt-BR')}
+                        {formatarDataSegura(ins.inspection_date)}
                       </p>
                     </div>
                   </div>
