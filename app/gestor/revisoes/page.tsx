@@ -128,8 +128,9 @@ export default function RevisoesPage() {
       setFilePDF(null); setFilePhoto(null)
       setIsModalOpen(false)
       fetchDados()
-    } catch (error) {
-      alert('Erro ao salvar registro.')
+    } catch (error: any) {
+      console.error('Erro ao salvar revisão:', error)
+      alert(`Erro ao salvar: ${error?.message || 'Verifique se todos os campos estão corretos.'}`)
     } finally {
       setSubmitting(false)
     }
@@ -219,10 +220,10 @@ export default function RevisoesPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <input type="text" placeholder="Serviço" className="col-span-2 bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" required value={formData.service_description} onChange={e => setFormData({...formData, service_description: e.target.value})} />
-                <input type="text" placeholder="Custo" className="bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" required value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} />
+                {/* CAMPO DE CUSTO CORRIGIDO AQUI */}
+                <input type="number" step="0.01" placeholder="Custo (R$)" className="bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm" required value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} />
               </div>
 
-              {/* CAMPOS DE UPLOAD NOVOS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><FileUp size={12}/> Anexar Nota Fiscal (PDF)</label>
@@ -234,7 +235,7 @@ export default function RevisoesPage() {
                 </div>
               </div>
 
-              <textarea placeholder="Observações..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm min-h-[100px]" />
+              <textarea placeholder="Observações (Se for garantia, avise aqui e coloque o custo como 0)..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm min-h-[100px]" />
 
               <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="text-slate-400 font-bold px-4">Cancelar</button>
