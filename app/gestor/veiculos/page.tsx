@@ -193,8 +193,8 @@ export default function VeiculosPage() {
             {veiculosFiltrados.map((veiculo) => (
               <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
                 
-                {/* Imagem do Carro (Agora puxando da tabela cruzada!) */}
-                <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
+                {/* Imagem do Carro (CORRIGIDA) */}
+                <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center p-4">
                   <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
                     {veiculo.tipo || 'PRÓPRIO'}
                   </div>
@@ -202,12 +202,12 @@ export default function VeiculosPage() {
                     {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
                   </div>
                   
-                  {/* Renderiza a imagem do GitHub se o link for encontrado na tabela vehicle_models */}
+                  {/* object-contain para caber inteiro + drop-shadow para efeito 3D */}
                   {veiculo.image_url ? (
                     <img 
                       src={veiculo.image_url} 
                       alt={veiculo.modelo} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-full h-full object-contain p-2 drop-shadow-[0_15px_15px_rgba(0,0,0,0.5)] group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500"
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-white/10">
