@@ -59,16 +59,10 @@ export default function TecnicoDashboard() {
     router.push('/login')
   }
 
-  // CORREÇÃO: Função blindada contra fuso horário e carimbos de tempo (Timestamps)
   const formatarDataSegura = (dataString: string) => {
     if (!dataString) return 'Data Inválida'
-    
-    // Corta qualquer horário (T00:00:00Z) e pega só a parte YYYY-MM-DD
-    const dataSemHora = dataString.split('T')[0]
-    const parts = dataSemHora.split('-')
-    
+    const parts = dataString.split('-')
     if (parts.length >= 3) {
-      // Cria a data forçando o fuso local do aparelho
       const dataLocal = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
       return dataLocal.toLocaleDateString('pt-BR')
     }
