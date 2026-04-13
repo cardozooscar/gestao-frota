@@ -23,6 +23,7 @@ export default function NovaInspecaoPage() {
   const router = useRouter()
 
   const [veiculos, setVeiculos] = useState<Vehicle[]>([])
+  const [tecnicoNome, setTecnicoNome] = useState('Técnico') // Novo estado para guardar o nome
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -58,6 +59,10 @@ export default function NovaInspecaoPage() {
     async function loadInitialData() {
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) { router.push('/login'); return }
+
+      // Busca o nome do técnico para usar no Alerta do WhatsApp
+      const { data: profile } = await supabase.from('profiles').select('nome').eq('id', userData.user.id).single()
+      if (profile?.nome) setTecnicoNome(profile.nome)
 
       const { data: assignments } = await supabase
         .from('vehicle_assignments').select('vehicle_id')
@@ -115,6 +120,38 @@ export default function NovaInspecaoPage() {
       if (fotoLateralEsq) await uploadFoto(fotoLateralEsq, 'lateral_esquerda', inspectionId, userId)
       if (fotoHodometro) await uploadFoto(fotoHodometro, 'hodometro', inspectionId, userId)
       if (fotoFerramentas) await uploadFoto(fotoFerramentas, 'ferramentas', inspectionId, userId)
+
+      // ==========================================
+      // 🚀 INÍCIO DO GATILHO DO WHATSAPP (ALERTA CRÍTICO)
+      // ==========================================
+      const veiculoSelecionado = veiculos.find(v => v.id === vehicleId)
+      const placaVeiculo = veiculoSelecionado ? veiculoSelecionado.placa : 'Desconhecida'
+
+      const itensFaltantes = []
+      if (!itemEstepe) itensFaltantes.push('Estepe')
+      if (!itemMacaco) itensFaltantes.push('Macaco')
+      if (!itemChaveRoda) itensFaltantes.push('Chave de Roda')
+      if (!itemTriangulo) itensFaltantes.push('Triângulo')
+
+      if (itensFaltantes.length > 0) {
+        try {
+          await fetch('/api/alerta-critico', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              placa: placaVeiculo,
+              tecnico: tecnicoNome,
+              itensFaltantes: itensFaltantes,
+              observacaoCritica: observationGeneral
+            })
+          })
+        } catch (err) {
+          console.error('Erro ao disparar webhook de alerta crítico', err)
+        }
+      }
+      // ==========================================
+      // FIM DO GATILHO DO WHATSAPP
+      // ==========================================
 
       router.push('/tecnico')
     } catch (err: any) { setErro(err.message || 'Erro inesperado.'); setSalvando(false) }
