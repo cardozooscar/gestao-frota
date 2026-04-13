@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Car, ArrowRight, UserPlus, ShieldCheck } from 'lucide-react'
+import { ArrowRight, UserPlus, ShieldCheck } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -14,11 +14,16 @@ export default function Home() {
       {/* CONTAINER PRINCIPAL */}
       <div className="w-full max-w-sm z-10 flex flex-col items-center">
         
-        {/* ÍCONE / LOGO */}
+        {/* LOGO OFICIAL FIBRANET */}
         <div className="flex justify-center mb-8">
-          <div className="h-24 w-24 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-blue-500/30 border border-blue-400/30 relative">
-            <Car size={48} className="text-white" />
-            <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-[#0a0f2c] rounded-full flex items-center justify-center border border-white/10">
+          <div className="h-28 w-28 bg-white/5 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-blue-500/20 border border-white/10 relative backdrop-blur-md">
+            <img 
+              src="https://raw.githubusercontent.com/cardozooscar/imagenscgr/refs/heads/main/WhatsApp_Image_2025-10-30_at_10.21.26__1_-removebg-preview.png" 
+              alt="Fibranet Brasil Logo" 
+              className="w-20 h-20 object-contain drop-shadow-lg"
+            />
+            {/* Selinho de segurança mantido no canto */}
+            <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-[#0a0f2c] rounded-full flex items-center justify-center border border-white/10 shadow-lg">
               <ShieldCheck size={20} className="text-emerald-400" />
             </div>
           </div>
