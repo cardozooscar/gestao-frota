@@ -51,8 +51,10 @@ export async function POST(request: Request) {
       veiculos.forEach(v => {
         // Acha os técnicos (Preparado para as duplas!)
         const tecnicosDoCarro = vinculos?.filter(vin => vin.vehicle_id === v.id) || [];
+        
+        // CORREÇÃO DO TYPESCRIPT AQUI: (t: any)
         const nomes = tecnicosDoCarro.length > 0 
-          ? tecnicosDoCarro.map(t => t.profiles?.nome).join(' e ') 
+          ? tecnicosDoCarro.map((t: any) => t.profiles?.nome).join(' e ') 
           : 'Livre / No Pátio';
 
         listaTexto += `🚗 *${v.placa}* (${v.modelo || 'S/M'})\n👤 ${nomes}\n\n`;
@@ -89,8 +91,9 @@ export async function POST(request: Request) {
         .eq('vehicle_id', veiculo.id)
         .is('ended_at', null);
 
+      // CORREÇÃO DO TYPESCRIPT AQUI TAMBÉM: (v: any)
       const nomesTecnicos = vinculos && vinculos.length > 0 
-        ? vinculos.map(v => v.profiles?.nome).join(' e ') 
+        ? vinculos.map((v: any) => v.profiles?.nome).join(' e ') 
         : 'Nenhum técnico vinculado';
 
       // C. Busca a última inspeção
@@ -129,7 +132,7 @@ export async function POST(request: Request) {
 
 // Função de disparo para o Evolution API
 async function enviarResposta(numeroJid: string, texto: string) {
-  const url = `${process.env.EVOLUTION_API_URL}/message/sendText/zabbix-alert`; // ⚠️ COLOQUE O NOME DA SUA INSTÂNCIA AQUI
+  const url = `${process.env.EVOLUTION_API_URL}/message/sendText/SUA_INSTANCIA_AQUI`; // ⚠️ COLOQUE O NOME DA SUA INSTÂNCIA AQUI
   const apiKey = process.env.EVOLUTION_API_KEY;
 
   if (!url || !apiKey) return;
