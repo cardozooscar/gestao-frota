@@ -174,8 +174,8 @@ export default function VinculosPage() {
             <h2 className="text-xl font-bold flex items-center gap-2 text-white">
               <Link2 size={20} className="text-blue-400" /> Novo vínculo
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Ao vincular, o sistema revoga automaticamente vínculos anteriores do técnico ou veículo.
+            <p className="text-xs text-emerald-400 mt-1 font-medium">
+              Você pode vincular múltiplos técnicos ao mesmo veículo (ex: Duplas). O sistema apenas revogará vínculos antigos deste mesmo técnico em outros carros.
             </p>
           </div>
 
@@ -258,65 +258,57 @@ export default function VinculosPage() {
                 <p className="text-sm text-slate-400">Nenhum veículo vinculado no momento.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {activeAssignments.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:-translate-y-1 hover:border-[#2f6eea] hover:shadow-2xl hover:shadow-blue-500/10"
+                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:-translate-y-1 hover:border-[#2f6eea] hover:shadow-2xl hover:shadow-blue-500/10 flex flex-col"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-white/5 pb-4 mb-4">
-                      {/* Nome do Técnico */}
-                      <div>
-                        <h3 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                          {item.profiles?.nome || 'Técnico não identificado'}
-                        </h3>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          @{item.profiles?.username || '-'}
-                        </p>
-                      </div>
-
-                      {/* Tags de Status */}
+                    <div className="flex flex-col border-b border-white/5 pb-4 mb-4 gap-2">
+                      {/* Veículo (Agora com destaque maior) */}
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-md bg-cyan-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400 border border-cyan-500/30">
-                          <User size={10} /> Em Campo
-                        </span>
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400">
+                          <Car size={16} />
+                        </div>
+                        <div>
+                          <p className="font-black text-white text-lg tracking-wider">
+                            {item.vehicles?.placa || '-'}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            {item.vehicles?.modelo || 'Modelo N/A'}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Detalhes do Vínculo */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#070b3f] border border-white/5 text-slate-400">
-                          <Car size={14} />
+                    {/* Detalhes do Técnico */}
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#070b3f] border border-white/10 text-slate-400">
+                          <User size={14} />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Veículo Liberado</p>
-                          <p className="font-bold text-white text-base">
-                            {item.vehicles?.placa || '-'} <span className="text-slate-400 font-medium text-sm ml-1">{item.vehicles?.modelo ? `(${item.vehicles.modelo})` : ''}</span>
+                          <h3 className="text-sm font-bold text-white leading-tight">
+                            {item.profiles?.nome || 'Técnico N/A'}
+                          </h3>
+                          <p className="text-[10px] font-medium text-slate-500">
+                            @{item.profiles?.username || '-'}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-sm">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#070b3f] border border-white/5 text-slate-400">
-                            <Calendar size={14} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Liberado em</p>
-                            <p className="font-medium text-slate-300">
-                              {new Date(item.started_at).toLocaleString('pt-BR')}
-                            </p>
-                          </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          Desde: {new Date(item.started_at).toLocaleDateString('pt-BR')}
                         </div>
 
                         {/* BOTÃO DE DESVINCULAR */}
                         <button
                           onClick={() => handleDesvincular(item.id)}
                           disabled={salvando}
-                          className="flex items-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold text-red-400 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
                         >
-                          <Unlink size={14} /> DESVINCULAR
+                          <Unlink size={12} /> REMOVER
                         </button>
                       </div>
                     </div>

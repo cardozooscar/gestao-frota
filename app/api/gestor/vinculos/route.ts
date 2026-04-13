@@ -14,7 +14,7 @@ export async function GET() {
       supabaseAdmin
         .from('vehicles')
         .select('id, placa, modelo, ativo')
-        .eq('ativo', true) // CORREÇÃO: Gestor só vincula carros ativos
+        .eq('ativo', true) // Gestor só vincula carros ativos
         .order('placa', { ascending: true }),
 
       supabaseAdmin
@@ -60,19 +60,16 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString()
 
-    // Encerra vínculos antigos do técnico e do veículo
+    // 1. Encerra vínculos antigos APENAS do técnico.
+    // Assim garantimos que o mesmo técnico não consiga ficar em 2 carros diferentes,
+    // mas permitimos que o mesmo carro tenha N técnicos vinculados (Duplas).
     await supabaseAdmin
       .from('vehicle_assignments')
       .update({ ended_at: now })
       .eq('profile_id', profileId)
       .is('ended_at', null)
 
-    await supabaseAdmin
-      .from('vehicle_assignments')
-      .update({ ended_at: now })
-      .eq('vehicle_id', vehicleId)
-      .is('ended_at', null)
-
+    // 2. Cria o novo vínculo
     const { error: insertError } = await supabaseAdmin
       .from('vehicle_assignments')
       .insert({ profile_id: profileId, vehicle_id: vehicleId })
