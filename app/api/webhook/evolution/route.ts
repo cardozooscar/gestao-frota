@@ -132,7 +132,7 @@ export async function POST(request: Request) {
 
 // Função de disparo para o Evolution API
 async function enviarResposta(numeroJid: string, texto: string) {
-  const url = `${process.env.EVOLUTION_API_URL}/message/sendText/SUA_INSTANCIA_AQUI`; // ⚠️ COLOQUE O NOME DA SUA INSTÂNCIA AQUI
+  const url = `${process.env.EVOLUTION_API_URL}/message/sendText/zabbix-alert`; // ⚠️ COLOQUE O NOME DA SUA INSTÂNCIA AQUI
   const apiKey = process.env.EVOLUTION_API_KEY;
 
   if (!url || !apiKey) return;
