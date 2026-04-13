@@ -5,37 +5,30 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // 1. Ignora se não for uma mensagem nova
     if (body.event !== 'messages.upsert') return NextResponse.json({ success: true });
 
     const messageInfo = body.data?.message;
     if (!messageInfo) return NextResponse.json({ success: true });
 
-    // Se a mensagem foi enviada pelo PRÓPRIO bot, ignora para não dar loop infinito
     if (body.data?.key?.fromMe) return NextResponse.json({ success: true });
 
-    // Extrai o texto e limpa (deixa tudo maiúsculo e sem espaços sobrando)
     const rawText = messageInfo.conversation || messageInfo.extendedTextMessage?.text || '';
     const textoMensagem = rawText.trim().toUpperCase();
     const numeroRemetente = body.data?.key?.remoteJid;
 
-    // Remove traços e espaços para testar se é uma placa pura
     const textoLimpo = textoMensagem.replace(/[^A-Z0-9]/g, '');
-    // Regex inteligente: Aceita placa padrão antigo (ABC1234) ou Mercosul (ABC1D23)
     const isPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(textoLimpo);
 
     // ==========================================
     // COMANDO 1: /PLACAS (Lista todos os veículos)
     // ==========================================
     if (textoMensagem === '/PLACAS') {
-      // Busca veículos ativos
       const { data: veiculos } = await supabaseAdmin
         .from('vehicles')
         .select('id, placa, modelo')
         .eq('ativo', true)
         .order('placa');
 
-      // Busca quem está com os carros
       const { data: vinculos } = await supabaseAdmin
         .from('vehicle_assignments')
         .select('vehicle_id, profiles(nome)')
@@ -49,10 +42,7 @@ export async function POST(request: Request) {
       let listaTexto = `📋 *FROTA FIBRANET - VEÍCULOS ATIVOS* 📋\n\n`;
 
       veiculos.forEach(v => {
-        // Acha os técnicos (Preparado para as duplas!)
         const tecnicosDoCarro = vinculos?.filter(vin => vin.vehicle_id === v.id) || [];
-        
-        // CORREÇÃO DO TYPESCRIPT AQUI: (t: any)
         const nomes = tecnicosDoCarro.length > 0 
           ? tecnicosDoCarro.map((t: any) => t.profiles?.nome).join(' e ') 
           : 'Livre / No Pátio';
@@ -67,12 +57,11 @@ export async function POST(request: Request) {
     }
 
     // ==========================================
-    // COMANDO 2: DIGITOU UMA PLACA (Dossiê)
+    // COMANDO 2: DIGITOU UMA PLACA (Dossiê com Link)
     // ==========================================
     if (isPlaca) {
-      const placaBuscada = textoLimpo; // Ex: PZG8449
+      const placaBuscada = textoLimpo; 
 
-      // A. Busca o carro no banco
       const { data: veiculo } = await supabaseAdmin
         .from('vehicles')
         .select('id, placa, modelo, ativo')
@@ -84,22 +73,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true });
       }
 
-      // B. Busca quem está com o carro (Lida com as duplas)
       const { data: vinculos } = await supabaseAdmin
         .from('vehicle_assignments')
         .select('profiles(nome)')
         .eq('vehicle_id', veiculo.id)
         .is('ended_at', null);
 
-      // CORREÇÃO DO TYPESCRIPT AQUI TAMBÉM: (v: any)
       const nomesTecnicos = vinculos && vinculos.length > 0 
         ? vinculos.map((v: any) => v.profiles?.nome).join(' e ') 
         : 'Nenhum técnico vinculado';
 
-      // C. Busca a última inspeção
+      // 🔥 ADICIONAMOS O 'id' AQUI NA BUSCA DA INSPEÇÃO
       const { data: inspecao } = await supabaseAdmin
         .from('inspections')
-        .select('inspection_date, odometer')
+        .select('id, inspection_date, odometer')
         .eq('vehicle_id', veiculo.id)
         .order('inspection_date', { ascending: false })
         .limit(1)
@@ -109,19 +96,24 @@ export async function POST(request: Request) {
       const dataVistoria = inspecao?.inspection_date ? new Date(inspecao.inspection_date).toLocaleDateString('pt-BR') : 'Sem registro';
       const kmAtual = inspecao?.odometer ? `${inspecao.odometer.toLocaleString('pt-BR')} km` : 'Sem registro';
 
+      // 🔥 MONTAMOS O LINK DIRETO PARA A INSPEÇÃO/VEÍCULO (Ajuste o domínio e a rota)
+      const linkVistoria = inspecao?.id 
+        ? `\n\n🔗 *Ver detalhes da vistoria:*\nhttps://gestaofrotafibranet.vercel.app/gestor/veiculos/${veiculo.id}` 
+        : '';
+
       const resposta = `🤖 *DOSSIÊ DO VEÍCULO* 🤖\n\n` +
         `🚗 *Placa:* ${veiculo.placa}\n` +
         `🏷️ *Modelo:* ${veiculo.modelo || 'Não informado'}\n` +
         `⚙️ *Status:* ${statusCarro}\n` +
         `👥 *Em uso por:* ${nomesTecnicos}\n` +
         `📅 *Última Vistoria:* ${dataVistoria}\n` +
-        `🛣️ *KM Atual:* ${kmAtual}`;
+        `🛣️ *KM Atual:* ${kmAtual}` +
+        linkVistoria; // Acoplamos o link no final da mensagem
 
       await enviarResposta(numeroRemetente, resposta);
       return NextResponse.json({ success: true });
     }
 
-    // Se o usuário digitou qualquer outra coisa ("Oi", "Bom dia"), o bot apenas ignora silenciosamente.
     return NextResponse.json({ success: true });
 
   } catch (error) {
