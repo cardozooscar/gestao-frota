@@ -7,79 +7,69 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  Legend,
+  ResponsiveContainer,
+  Cell
 } from 'recharts'
 
+// O TypeScript agora sabe que a página manda a "placa", e não o "name"
 type ChartData = {
-  name: string
+  placa: string
   odometer: number
+  [key: string]: any // Truque para o TS aceitar qualquer dado extra sem reclamar
 }
 
-export default function HodometroChart({ data }: { data: ChartData[] }) {
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex h-[320px] items-center justify-center text-slate-500 text-sm italic">
-        Nenhum dado de hodômetro registrado.
-      </div>
-    )
-  }
+const CORES_PALETA = [
+  '#3b82f6', '#22d3ee', '#34d399', '#a78bfa', 
+  '#fb923c', '#f87171', '#fbbf24', '#e2e8f0',
+]
 
+export default function HodometroTotalChart({ data }: { data: ChartData[] }) {
   return (
-    <div style={{ width: '100%', height: 320 }}>
+    <div style={{ width: '100%', height: 350 }}>
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          
-          {/* DEFINIÇÃO DO GRADIENTE */}
-          <defs>
-            <linearGradient id="colorOdometer" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#38bdf8" stopOpacity={1} />
-              <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0.4} />
-            </linearGradient>
-          </defs>
-          
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+        <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
           
           <XAxis 
-            dataKey="name" 
-            stroke="#64748b" 
-            fontSize={10} 
-            fontWeight="600"
-            tickLine={false}
-            axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
-            tickMargin={12}
+            dataKey="placa" 
+            tick={false} 
+            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} 
           />
           
           <YAxis 
-            stroke="#64748b" 
-            fontSize={10} 
-            fontWeight="600"
+            stroke="#94a3b8" 
+            fontSize={11} 
             tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} 
-            width={45}
-            tickLine={false}
-            axisLine={false}
+            width={60}
           />
           
           <Tooltip 
-            cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+            cursor={{ fill: 'rgba(255,255,255,0.03)' }}
             contentStyle={{ 
-              backgroundColor: 'rgba(7, 11, 63, 0.85)', 
-              border: '1px solid rgba(56, 189, 248, 0.2)', 
-              borderRadius: '16px',
+              backgroundColor: '#070b3f', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              borderRadius: '12px',
               color: '#fff',
-              fontWeight: '800',
-              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(8px)'
+              fontWeight: 'bold',
+              padding: '12px'
             }}
-            formatter={(value: any) => [`${Number(value || 0).toLocaleString('pt-BR')} km`, 'KM Registrada']}
-            labelStyle={{ color: '#38bdf8', marginBottom: '6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+            formatter={(value: any) => [`${Number(value || 0).toLocaleString('pt-BR')} km`, 'Hodômetro']}
+            labelStyle={{ color: '#fff', marginBottom: '4px' }}
+          />
+
+          <Legend 
+            wrapperStyle={{ paddingTop: '20px' }}
+            iconType="square"
+            iconSize={12}
+            formatter={(value) => <span style={{ color: '#e2e8f0', fontSize: '12px', fontWeight: 'bold', marginLeft: '6px' }}>{value}</span>}
           />
           
-          <Bar 
-            dataKey="odometer" 
-            fill="url(#colorOdometer)" 
-            radius={[8, 8, 0, 0]} 
-            barSize={32}
-          />
+          <Bar dataKey="odometer" radius={[6, 6, 0, 0]} barSize={40}>
+            {data?.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={CORES_PALETA[index % CORES_PALETA.length]} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
