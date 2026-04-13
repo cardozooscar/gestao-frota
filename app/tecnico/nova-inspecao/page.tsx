@@ -3,28 +3,21 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import { 
-  Car, 
-  Calendar, 
-  Gauge, 
-  ClipboardCheck, 
-  Activity, 
-  Droplets, 
-  Camera, 
+import {
+  Car,
+  Calendar,
+  Gauge,
+  ClipboardCheck,
+  Activity,
+  Droplets,
+  Camera,
   ChevronLeft,
   Save,
   CheckCircle2
 } from 'lucide-react'
 
-type Vehicle = {
-  id: string
-  placa: string
-  modelo: string
-}
-
-type Assignment = {
-  vehicle_id: string
-}
+type Vehicle = { id: string; placa: string; modelo: string }
+type Assignment = { vehicle_id: string }
 
 export default function NovaInspecaoPage() {
   const router = useRouter()
@@ -67,20 +60,15 @@ export default function NovaInspecaoPage() {
       if (!userData.user) { router.push('/login'); return }
 
       const { data: assignments } = await supabase
-        .from('vehicle_assignments')
-        .select('vehicle_id')
-        .eq('profile_id', userData.user.id)
-        .is('ended_at', null)
+        .from('vehicle_assignments').select('vehicle_id')
+        .eq('profile_id', userData.user.id).is('ended_at', null)
 
       const vehicleIds = (assignments as Assignment[] | null)?.map((item) => item.vehicle_id) || []
       if (vehicleIds.length === 0) return
 
       const { data: vehiclesData } = await supabase
-        .from('vehicles')
-        .select('id, placa, modelo')
-        .in('id', vehicleIds)
-        .eq('ativo', true)
-        .order('placa', { ascending: true })
+        .from('vehicles').select('id, placa, modelo')
+        .in('id', vehicleIds).eq('ativo', true).order('placa', { ascending: true })
 
       const lista = (vehiclesData as Vehicle[]) || []
       setVeiculos(lista)
@@ -95,11 +83,8 @@ export default function NovaInspecaoPage() {
     await supabase.storage.from('inspection-photos').upload(filePath, file)
     const { data: { publicUrl } } = supabase.storage.from('inspection-photos').getPublicUrl(filePath)
     await supabase.from('inspection_photos').insert({
-      inspection_id: inspectionId,
-      photo_type: tipo,
-      file_path: filePath,
-      public_url: publicUrl,
-      profile_id: userId,
+      inspection_id: inspectionId, photo_type: tipo, file_path: filePath,
+      public_url: publicUrl, profile_id: userId,
     })
   }
 
@@ -112,11 +97,13 @@ export default function NovaInspecaoPage() {
       const userId = userData.user.id
 
       const { data: insertData, error: inspectionError } = await supabase.from('inspections').insert({
-        vehicle_id: vehicleId, profile_id: userId, inspection_date: inspectionDate, odometer: Number(odometer),
-        item_triangulo: itemTriangulo, item_macaco: itemMacaco, item_chave_roda: itemChaveRoda, item_estepe: itemEstepe,
-        observation_general: observationGeneral, motor_oil_level: motorOilLevel, motor_brakes: motorBrakes,
-        motor_suspension: motorSuspension, motor_headlights: motorHeadlights, motor_observation: motorObservation,
-        cleaning_mats: cleaningMats, cleaning_water: cleaningWater, cleaning_windshield: cleaningWindshield, cleaning_bodywork: cleaningBodywork,
+        vehicle_id: vehicleId, profile_id: userId, inspection_date: inspectionDate,
+        odometer: Number(odometer), item_triangulo: itemTriangulo, item_macaco: itemMacaco,
+        item_chave_roda: itemChaveRoda, item_estepe: itemEstepe, observation_general: observationGeneral,
+        motor_oil_level: motorOilLevel, motor_brakes: motorBrakes, motor_suspension: motorSuspension,
+        motor_headlights: motorHeadlights, motor_observation: motorObservation,
+        cleaning_mats: cleaningMats, cleaning_water: cleaningWater,
+        cleaning_windshield: cleaningWindshield, cleaning_bodywork: cleaningBodywork,
       }).select().single()
 
       if (inspectionError || !insertData) throw new Error(inspectionError?.message || 'Erro ao salvar.')
@@ -134,166 +121,624 @@ export default function NovaInspecaoPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#02052b] text-white p-4 pb-12">
-      <div className="max-w-3xl mx-auto space-y-6">
-        
-        {/* HEADER COM VOLTAR */}
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/tecnico')} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-2xl font-extrabold tracking-tight">Nova Inspeção</h1>
-        </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* SEÇÃO: BÁSICO */}
-          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4">
-            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-xs tracking-widest mb-2">
-              <Car size={16} /> Dados do Veículo
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-400 ml-1">Veículo</label>
-                <select 
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-all"
-                  value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} required disabled={veiculos.length <= 1}
-                >
-                  <option value="" className="bg-[#02052b]">Selecione...</option>
-                  {veiculos.map((v) => <option key={v.id} value={v.id} className="bg-[#02052b]">{v.placa} - {v.modelo}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-400 ml-1">Data</label>
-                  <input type="date" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none" value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} required />
+        * { box-sizing: border-box; }
+
+        .insp-root {
+          min-height: 100vh;
+          background: #080d1a;
+          background-image:
+            radial-gradient(ellipse 80% 40% at 50% -5%, rgba(37,99,235,0.15) 0%, transparent 65%),
+            repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px),
+            repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(255,255,255,0.018) 79px, rgba(255,255,255,0.018) 80px);
+          font-family: 'DM Sans', sans-serif;
+          color: #e2e8f0;
+          padding: 20px 16px 60px;
+        }
+
+        .insp-inner {
+          max-width: 680px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        /* NAV */
+        .insp-nav {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 4px;
+        }
+        .back-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          color: #94a3b8;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+        .insp-title {
+          font-family: 'Syne', sans-serif;
+          font-size: 24px;
+          font-weight: 800;
+          color: #f1f5f9;
+          letter-spacing: -0.02em;
+        }
+
+        /* PROGRESS BAR */
+        .progress-bar-wrap {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 12px;
+          padding: 12px 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .progress-track {
+          flex: 1;
+          height: 4px;
+          background: rgba(255,255,255,0.08);
+          border-radius: 999px;
+          overflow: hidden;
+        }
+        .progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #2563eb, #38bdf8);
+          border-radius: 999px;
+          width: 20%;
+          transition: width 0.4s ease;
+        }
+        .progress-label {
+          font-size: 10px;
+          font-weight: 600;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          white-space: nowrap;
+        }
+
+        /* SECTION CARDS */
+        .section-card {
+          background: rgba(255,255,255,0.025);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 20px;
+          padding: 22px 20px;
+          backdrop-filter: blur(10px);
+          position: relative;
+          overflow: hidden;
+        }
+        .section-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+        .section-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.22em;
+          margin-bottom: 18px;
+        }
+        .section-header-dot {
+          width: 20px;
+          height: 20px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* FIELDS */
+        .field-label {
+          font-size: 10px;
+          font-weight: 600;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          margin-bottom: 6px;
+          display: block;
+        }
+        .field-input {
+          width: 100%;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 12px 14px;
+          color: #e2e8f0;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          font-weight: 400;
+          outline: none;
+          transition: border-color 0.2s, background 0.2s;
+          -webkit-appearance: none;
+          appearance: none;
+        }
+        .field-input::placeholder { color: #334155; }
+        .field-input:focus {
+          border-color: rgba(37,99,235,0.5);
+          background: rgba(37,99,235,0.06);
+        }
+        .field-input option { background: #0f172a; color: #e2e8f0; }
+        .field-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .field-grid-3 {
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr;
+          gap: 12px;
+        }
+        @media (max-width: 560px) {
+          .field-grid-3 { grid-template-columns: 1fr 1fr; }
+          .field-grid-3 > *:first-child { grid-column: 1 / -1; }
+        }
+        .field-textarea {
+          width: 100%;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 12px 14px;
+          color: #e2e8f0;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          outline: none;
+          resize: vertical;
+          min-height: 90px;
+          transition: border-color 0.2s, background 0.2s;
+        }
+        .field-textarea::placeholder { color: #334155; }
+        .field-textarea:focus {
+          border-color: rgba(37,99,235,0.4);
+          background: rgba(37,99,235,0.05);
+        }
+
+        /* TOGGLE ITEMS */
+        .toggle-grid { display: grid; gap: 10px; }
+        .toggle-grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .toggle-grid-2 { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 460px) {
+          .toggle-grid-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+        .toggle-item {
+          position: relative;
+          padding: 14px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.03);
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        .toggle-item.active-green {
+          background: rgba(52,211,153,0.07);
+          border-color: rgba(52,211,153,0.3);
+        }
+        .toggle-item.active-cyan {
+          background: rgba(34,211,238,0.07);
+          border-color: rgba(34,211,238,0.3);
+        }
+        .toggle-item-label {
+          font-size: 9px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          color: #475569;
+        }
+        .toggle-item.active-green .toggle-item-label { color: #6ee7b7; }
+        .toggle-item.active-cyan .toggle-item-label { color: #67e8f9; }
+        .toggle-check {
+          width: 18px;
+          height: 18px;
+          border-radius: 6px;
+          border: 1.5px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.03);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          align-self: flex-end;
+          position: absolute;
+          top: 10px;
+          right: 10px;
+        }
+        .toggle-item.active-green .toggle-check {
+          background: rgba(52,211,153,0.2);
+          border-color: #34d399;
+        }
+        .toggle-item.active-cyan .toggle-check {
+          background: rgba(34,211,238,0.2);
+          border-color: #22d3ee;
+        }
+
+        /* MOTOR FIELDS */
+        .motor-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+        @media (max-width: 460px) {
+          .motor-grid { grid-template-columns: 1fr; }
+        }
+
+        /* FOTO GRID */
+        .foto-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        @media (max-width: 400px) {
+          .foto-grid { grid-template-columns: 1fr; }
+        }
+        .foto-item {}
+        .foto-label {
+          font-size: 9px;
+          font-weight: 700;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.16em;
+          margin-bottom: 6px;
+          display: block;
+        }
+        .foto-zone {
+          position: relative;
+          height: 110px;
+          width: 100%;
+          border-radius: 14px;
+          border: 1.5px dashed rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.02);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.2s;
+          overflow: hidden;
+        }
+        .foto-zone.has-file {
+          border-color: rgba(56,189,248,0.4);
+          background: rgba(56,189,248,0.06);
+        }
+        .foto-zone:hover { border-color: rgba(255,255,255,0.2); }
+        .foto-zone.has-file:hover { border-color: rgba(56,189,248,0.6); }
+        .foto-zone-input {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+          cursor: pointer;
+          z-index: 10;
+        }
+        .foto-zone-icon {
+          color: #334155;
+          transition: color 0.2s;
+        }
+        .foto-zone.has-file .foto-zone-icon { color: #38bdf8; }
+        .foto-zone-text {
+          font-size: 9px;
+          font-weight: 700;
+          color: #334155;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+        }
+        .foto-zone.has-file .foto-zone-text { color: #38bdf8; }
+
+        /* ERRO */
+        .erro-box {
+          background: rgba(239,68,68,0.08);
+          border: 1px solid rgba(239,68,68,0.25);
+          color: #f87171;
+          border-radius: 14px;
+          padding: 14px 18px;
+          font-size: 13px;
+          font-weight: 600;
+          text-align: center;
+        }
+
+        /* SUBMIT BUTTON */
+        .submit-btn {
+          width: 100%;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          border-radius: 18px;
+          background: none;
+          transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .submit-btn:active { transform: scale(0.97); }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .submit-btn-inner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 20px;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          border-radius: 18px;
+          font-family: 'Syne', sans-serif;
+          font-size: 15px;
+          font-weight: 800;
+          color: #fff;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          position: relative;
+        }
+        .submit-btn-inner::before {
+          content: '';
+          position: absolute;
+          inset: 1px;
+          border-radius: 17px;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+          pointer-events: none;
+        }
+        .submit-spinner {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* NUMBER INPUT NO SPIN */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+        input[type=number] { -moz-appearance: textfield; }
+      `}</style>
+
+      <main className="insp-root">
+        <div className="insp-inner">
+
+          {/* NAV */}
+          <div className="insp-nav">
+            <button className="back-btn" onClick={() => router.push('/tecnico')}>
+              <ChevronLeft size={20} />
+            </button>
+            <h1 className="insp-title">Nova Inspeção</h1>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* DADOS DO VEÍCULO */}
+            <div className="section-card">
+              <div className="section-header" style={{ color: '#60a5fa' }}>
+                <div className="section-header-dot" style={{ background: 'rgba(96,165,250,0.15)' }}>
+                  <Car size={12} color="#60a5fa" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-400 ml-1">Hodômetro</label>
-                  <input type="number" placeholder="0" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-blue-500" value={odometer} onChange={(e) => setOdometer(e.target.value)} required />
+                Dados do Veículo
+              </div>
+
+              <div className="field-grid-3">
+                <div>
+                  <label className="field-label">Veículo</label>
+                  <select
+                    className="field-input"
+                    value={vehicleId}
+                    onChange={(e) => setVehicleId(e.target.value)}
+                    required
+                    disabled={veiculos.length <= 1}
+                  >
+                    <option value="">Selecione...</option>
+                    {veiculos.map((v) => (
+                      <option key={v.id} value={v.id}>{v.placa} — {v.modelo}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Data</label>
+                  <input
+                    type="date"
+                    className="field-input"
+                    value={inspectionDate}
+                    onChange={(e) => setInspectionDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Hodômetro</label>
+                  <input
+                    type="number"
+                    placeholder="km"
+                    className="field-input"
+                    value={odometer}
+                    onChange={(e) => setOdometer(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* SEÇÃO: CHECKLIST */}
-          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase text-xs tracking-widest mb-6">
-              <ClipboardCheck size={16} /> Checklist de Segurança
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[ 
-                {label: 'Triângulo', state: itemTriangulo, set: setItemTriangulo},
-                {label: 'Macaco', state: itemMacaco, set: setItemMacaco},
-                {label: 'Chave Roda', state: itemChaveRoda, set: setItemChaveRoda},
-                {label: 'Estepe', state: itemEstepe, set: setItemEstepe}
-              ].map((item) => (
-                <button 
-                  key={item.label} type="button" onClick={() => item.set(!item.state)}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${item.state ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-white/5 border-white/10 text-slate-400'}`}
-                >
-                  <span className="text-xs font-bold uppercase">{item.label}</span>
-                  {item.state && <CheckCircle2 size={16} />}
-                </button>
-              ))}
-            </div>
-            <textarea 
-              placeholder="Observações de segurança..." className="w-full mt-4 bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-emerald-500 min-h-[100px]"
-              value={observationGeneral} onChange={(e) => setObservationGeneral(e.target.value)}
-            />
-          </section>
+            {/* CHECKLIST */}
+            <div className="section-card">
+              <div className="section-header" style={{ color: '#4ade80' }}>
+                <div className="section-header-dot" style={{ background: 'rgba(74,222,128,0.12)' }}>
+                  <ClipboardCheck size={12} color="#4ade80" />
+                </div>
+                Checklist de Segurança
+              </div>
 
-          {/* SEÇÃO: MOTOR */}
-          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-orange-400 font-bold uppercase text-xs tracking-widest mb-6">
-              <Activity size={16} /> Condições do Motor
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <input type="text" placeholder="Nível do óleo" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorOilLevel} onChange={(e) => setMotorOilLevel(e.target.value)} />
-              <input type="text" placeholder="Freios" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorBrakes} onChange={(e) => setMotorBrakes(e.target.value)} />
-              <input type="text" placeholder="Suspensão" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorSuspension} onChange={(e) => setMotorSuspension(e.target.value)} />
-              <input type="text" placeholder="Faróis" className="bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500" value={motorHeadlights} onChange={(e) => setMotorHeadlights(e.target.value)} />
-            </div>
-            <textarea 
-              placeholder="Notas técnicas do motor..." className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-orange-500 min-h-[100px]"
-              value={motorObservation} onChange={(e) => setMotorObservation(e.target.value)}
-            />
-          </section>
+              <div className="toggle-grid toggle-grid-4" style={{ marginBottom: 14 }}>
+                {[
+                  { label: 'Triângulo', state: itemTriangulo, set: setItemTriangulo },
+                  { label: 'Macaco', state: itemMacaco, set: setItemMacaco },
+                  { label: 'Chave Roda', state: itemChaveRoda, set: setItemChaveRoda },
+                  { label: 'Estepe', state: itemEstepe, set: setItemEstepe },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`toggle-item ${item.state ? 'active-green' : ''}`}
+                    onClick={() => item.set(!item.state)}
+                  >
+                    <div className="toggle-check">
+                      {item.state && <CheckCircle2 size={12} color="#34d399" />}
+                    </div>
+                    <div className="toggle-item-label">{item.label}</div>
+                  </div>
+                ))}
+              </div>
 
-          {/* SEÇÃO: LIMPEZA */}
-          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-cyan-400 font-bold uppercase text-xs tracking-widest mb-6">
-              <Droplets size={16} /> Higienização
+              <textarea
+                className="field-textarea"
+                placeholder="Observações de segurança..."
+                value={observationGeneral}
+                onChange={(e) => setObservationGeneral(e.target.value)}
+              />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              {[ 
-                {label: 'Tapetes', state: cleaningMats, set: setCleaningMats},
-                {label: 'Água', state: cleaningWater, set: setCleaningWater},
-                {label: 'Para-brisa', state: cleaningWindshield, set: setCleaningWindshield},
-                {label: 'Lataria', state: cleaningBodywork, set: setCleaningBodywork}
-              ].map((item) => (
-                <button 
-                  key={item.label} type="button" onClick={() => item.set(!item.state)}
-                  className={`flex items-center justify-between p-4 rounded-xl border transition-all ${item.state ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400' : 'bg-white/5 border-white/10 text-slate-400'}`}
-                >
-                  <span className="text-xs font-bold uppercase">{item.label}</span>
-                  {item.state && <CheckCircle2 size={16} />}
-                </button>
-              ))}
-            </div>
-          </section>
 
-          {/* SEÇÃO: FOTOS */}
-          <section className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-xs tracking-widest mb-6">
-              <Camera size={16} /> Registros Fotográficos
+            {/* MOTOR */}
+            <div className="section-card">
+              <div className="section-header" style={{ color: '#fb923c' }}>
+                <div className="section-header-dot" style={{ background: 'rgba(251,146,60,0.12)' }}>
+                  <Activity size={12} color="#fb923c" />
+                </div>
+                Condições do Motor
+              </div>
+
+              <div className="motor-grid">
+                <div>
+                  <label className="field-label">Nível do óleo</label>
+                  <input type="text" className="field-input" placeholder="Ex: Normal" value={motorOilLevel} onChange={(e) => setMotorOilLevel(e.target.value)} />
+                </div>
+                <div>
+                  <label className="field-label">Freios</label>
+                  <input type="text" className="field-input" placeholder="Ex: Bom" value={motorBrakes} onChange={(e) => setMotorBrakes(e.target.value)} />
+                </div>
+                <div>
+                  <label className="field-label">Suspensão</label>
+                  <input type="text" className="field-input" placeholder="Ex: Normal" value={motorSuspension} onChange={(e) => setMotorSuspension(e.target.value)} />
+                </div>
+                <div>
+                  <label className="field-label">Faróis</label>
+                  <input type="text" className="field-input" placeholder="Ex: Funcionando" value={motorHeadlights} onChange={(e) => setMotorHeadlights(e.target.value)} />
+                </div>
+              </div>
+
+              <textarea
+                className="field-textarea"
+                placeholder="Notas técnicas do motor..."
+                value={motorObservation}
+                onChange={(e) => setMotorObservation(e.target.value)}
+              />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                {label: 'Frente', set: setFotoFrente, file: fotoFrente},
-                {label: 'Fundo', set: setFotoFundo, file: fotoFundo},
-                {label: 'Lat. Direita', set: setFotoLateralDir, file: fotoLateralDir},
-                {label: 'Lat. Esquerda', set: setFotoLateralEsq, file: fotoLateralEsq},
-                {label: 'Hodômetro', set: setFotoHodometro, file: fotoHodometro},
-                {label: 'Ferramentas', set: setFotoFerramentas, file: fotoFerramentas}
-              ].map((item) => (
-                <div key={item.label} className="relative">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2 ml-1">{item.label}</label>
-                  <div className={`relative flex items-center justify-center h-32 w-full rounded-2xl border-2 border-dashed transition-all ${item.file ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-white/5 border-white/10 text-slate-600 hover:border-white/20'}`}>
-                    {/* ADICIONADO capture="environment" AQUI */}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment" 
-                      onChange={(e) => item.set(e.target.files?.[0] || null)} 
-                      className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                    />
-                    <div className="flex flex-col items-center gap-2">
-                      <Camera size={24} />
-                      <span className="text-[10px] font-bold uppercase">{item.file ? 'Foto Selecionada' : 'Clique para tirar'}</span>
+
+            {/* HIGIENIZAÇÃO */}
+            <div className="section-card">
+              <div className="section-header" style={{ color: '#22d3ee' }}>
+                <div className="section-header-dot" style={{ background: 'rgba(34,211,238,0.1)' }}>
+                  <Droplets size={12} color="#22d3ee" />
+                </div>
+                Higienização
+              </div>
+
+              <div className="toggle-grid toggle-grid-2" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+                {[
+                  { label: 'Tapetes', state: cleaningMats, set: setCleaningMats },
+                  { label: 'Água', state: cleaningWater, set: setCleaningWater },
+                  { label: 'Para-brisa', state: cleaningWindshield, set: setCleaningWindshield },
+                  { label: 'Lataria', state: cleaningBodywork, set: setCleaningBodywork },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`toggle-item ${item.state ? 'active-cyan' : ''}`}
+                    onClick={() => item.set(!item.state)}
+                  >
+                    <div className="toggle-check">
+                      {item.state && <CheckCircle2 size={12} color="#22d3ee" />}
+                    </div>
+                    <div className="toggle-item-label">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* FOTOS */}
+            <div className="section-card">
+              <div className="section-header" style={{ color: '#818cf8' }}>
+                <div className="section-header-dot" style={{ background: 'rgba(129,140,248,0.12)' }}>
+                  <Camera size={12} color="#818cf8" />
+                </div>
+                Registros Fotográficos
+                <span style={{ marginLeft: 'auto', fontSize: 9, color: '#334155', fontWeight: 600, letterSpacing: '0.1em' }}>6 OBRIGATÓRIAS</span>
+              </div>
+
+              <div className="foto-grid">
+                {[
+                  { label: 'Frente', set: setFotoFrente, file: fotoFrente },
+                  { label: 'Fundo', set: setFotoFundo, file: fotoFundo },
+                  { label: 'Lat. Direita', set: setFotoLateralDir, file: fotoLateralDir },
+                  { label: 'Lat. Esquerda', set: setFotoLateralEsq, file: fotoLateralEsq },
+                  { label: 'Hodômetro', set: setFotoHodometro, file: fotoHodometro },
+                  { label: 'Ferramentas', set: setFotoFerramentas, file: fotoFerramentas },
+                ].map((item) => (
+                  <div key={item.label} className="foto-item">
+                    <span className="foto-label">{item.label}</span>
+                    <div className={`foto-zone ${item.file ? 'has-file' : ''}`}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => item.set(e.target.files?.[0] || null)}
+                        className="foto-zone-input"
+                      />
+                      <Camera size={20} className="foto-zone-icon" />
+                      <span className="foto-zone-text">
+                        {item.file ? '✓ Capturada' : 'Tirar foto'}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </section>
 
-          {erro && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-4 text-sm font-bold text-center">
-              {erro}
-            </div>
-          )}
+            {/* ERRO */}
+            {erro && <div className="erro-box">{erro}</div>}
 
-          {/* BOTÃO SALVAR */}
-          <button 
-            type="submit" disabled={salvando}
-            className="group flex items-center justify-center gap-3 w-full bg-[#2f6eea] hover:bg-[#255ed0] text-white py-5 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
-          >
-            {salvando ? 'PROCESSANDO...' : <><Save size={20} /> FINALIZAR INSPEÇÃO</>}
-          </button>
+            {/* SUBMIT */}
+            <button type="submit" disabled={salvando} className="submit-btn">
+              <div className="submit-btn-inner">
+                {salvando ? (
+                  <>
+                    <div className="submit-spinner" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    Finalizar Inspeção
+                  </>
+                )}
+              </div>
+            </button>
 
-        </form>
-      </div>
-    </main>
+          </form>
+        </div>
+      </main>
+    </>
   )
 }
