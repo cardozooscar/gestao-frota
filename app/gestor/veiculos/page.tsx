@@ -15,72 +15,94 @@ export default function VeiculosPage() {
   const [filtroRecentes, setFiltroRecentes] = useState(false)
 
   useEffect(() => {
-    async function fetchVeiculos() {
-      try {
-        setLoading(true)
-        
-        // 1. Busca os veículos puros
-        const { data: vData, error: vError } = await supabase
-          .from('vehicles')
-          .select('*')
-          .order('placa', { ascending: true })
-
-        if (vError) throw vError
-
-        // 2. Busca apenas as datas das inspeções para cruzar depois
-        const { data: iData } = await supabase
-          .from('inspections')
-          .select('vehicle_id, inspection_date')
-
-        // 3. BUSCA NOVA: Pega a tabela de modelos para carregar as fotos
-        const { data: mData } = await supabase
-          .from('vehicle_models')
-          .select('model_name, image_url')
-
-        // 4. Cruza todos os dados manualmente (Método à prova de falhas)
-        const veiculosProcessados = vData?.map(v => {
-          // --- LÓGICA DA DATA DA VISTORIA ---
-          const inspecoesDoCarro = iData?.filter(i => i.vehicle_id === v.id) || [];
-          let ultimaInspecaoObjeto: Date | null = null;
-          
-          if (inspecoesDoCarro.length > 0) {
-            const datasTimestamps = inspecoesDoCarro.map(i => new Date(i.inspection_date).getTime());
-            const maxTimestamp = Math.max(...datasTimestamps);
-            const inspecaoMaisRecente = inspecoesDoCarro.find(i => new Date(i.inspection_date).getTime() === maxTimestamp);
-            
-            if (inspecaoMaisRecente?.inspection_date) {
-                const parts = inspecaoMaisRecente.inspection_date.split('-');
-                if (parts.length === 3) {
-                    ultimaInspecaoObjeto = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                }
-            }
-          }
-
-          // --- LÓGICA DA FOTO DO MODELO ---
-          // Procura o modelo na tabela vehicle_models (ignorando maiúsculas/minúsculas para evitar erros)
-          const modeloEncontrado = mData?.find(
-            m => m.model_name.toLowerCase() === v.modelo.toLowerCase()
-          );
-          
-          return { 
-            ...v, 
-            ultimaInspecaoObjeto, 
-            image_url: modeloEncontrado?.image_url || null // Vincula a foto!
-          }
-        })
-
-        setVeiculos(veiculosProcessados || [])
-      } catch (error) {
-        console.error('Erro ao buscar veículos:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchVeiculos()
   }, [])
 
-  // Lógica de Filtragem (Ativa/Inativa, Placa, Recentes)
+  async function fetchVeiculos() {
+    try {
+      setLoading(true)
+      
+      // 1. Busca os veículos puros
+      const { data: vData, error: vError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .order('placa', { ascending: true })
+
+      if (vError) throw vError
+
+      // 2. Busca apenas as datas das inspeções para cruzar depois
+      const { data: iData } = await supabase
+        .from('inspections')
+        .select('vehicle_id, inspection_date')
+
+      // 3. Busca a tabela de modelos para carregar as fotos
+      const { data: mData } = await supabase
+        .from('vehicle_models')
+        .select('model_name, image_url')
+
+      // 4. Cruza todos os dados manualmente
+      const veiculosProcessados = vData?.map(v => {
+        // --- LÓGICA DA DATA DA VISTORIA ---
+        const inspecoesDoCarro = iData?.filter(i => i.vehicle_id === v.id) || [];
+        let ultimaInspecaoObjeto: Date | null = null;
+        
+        if (inspecoesDoCarro.length > 0) {
+          const datasTimestamps = inspecoesDoCarro.map(i => new Date(i.inspection_date).getTime());
+          const maxTimestamp = Math.max(...datasTimestamps);
+          const inspecaoMaisRecente = inspecoesDoCarro.find(i => new Date(i.inspection_date).getTime() === maxTimestamp);
+          
+          if (inspecaoMaisRecente?.inspection_date) {
+              const parts = inspecaoMaisRecente.inspection_date.split('-');
+              if (parts.length === 3) {
+                  ultimaInspecaoObjeto = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+              }
+          }
+        }
+
+        // --- LÓGICA DA FOTO DO MODELO ---
+        const modeloEncontrado = mData?.find(
+          m => m.model_name.toLowerCase() === v.modelo.toLowerCase()
+        );
+        
+        return { 
+          ...v, 
+          ultimaInspecaoObjeto, 
+          image_url: modeloEncontrado?.image_url || null
+        }
+      })
+
+      setVeiculos(veiculosProcessados || [])
+    } catch (error) {
+      console.error('Erro ao buscar veículos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // NOVA FUNÇÃO: Ativar e Desativar o Veículo no Banco de Dados
+  async function toggleStatusVeiculo(id: string, statusAtual: boolean) {
+    try {
+      const novoStatus = !statusAtual; // Inverte o status atual
+      
+      const { error } = await supabase
+        .from('vehicles')
+        .update({ ativo: novoStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Atualiza a tela imediatamente sem precisar buscar tudo de novo
+      setVeiculos(veiculos.map(v => 
+        v.id === id ? { ...v, ativo: novoStatus } : v
+      ));
+
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      alert('Erro ao alterar o status do veículo. Tente novamente.');
+    }
+  }
+
+  // Lógica de Filtragem
   const veiculosFiltrados = veiculos.filter(v => {
     const isAtivo = v.ativo === true;
     if (abaAtual === 'ativos' && !isAtivo) return false;
@@ -156,7 +178,6 @@ export default function VeiculosPage() {
             </button>
           </div>
 
-          {/* Novos Filtros: Busca e Recentes */}
           <div className="flex flex-col sm:flex-row w-full lg:w-auto gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -193,7 +214,7 @@ export default function VeiculosPage() {
             {veiculosFiltrados.map((veiculo) => (
               <div key={veiculo.id} className="bg-[#0f153a] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all group shadow-lg flex flex-col">
                 
-                {/* Imagem do Carro (CORRIGIDA) */}
+                {/* Imagem do Carro */}
                 <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center p-4">
                   <div className="absolute top-4 left-4 z-10 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider">
                     {veiculo.tipo || 'PRÓPRIO'}
@@ -202,12 +223,11 @@ export default function VeiculosPage() {
                     {veiculo.ativo ? 'ATIVO' : 'INATIVO'}
                   </div>
                   
-                  {/* object-contain para caber inteiro + drop-shadow para efeito 3D */}
                   {veiculo.image_url ? (
                     <img 
                       src={veiculo.image_url} 
                       alt={veiculo.modelo} 
-                      className="w-full h-full object-contain p-2 drop-shadow-[0_15px_15px_rgba(0,0,0,0.5)] group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500"
+                      className={`w-full h-full object-contain p-2 drop-shadow-[0_15px_15px_rgba(0,0,0,0.5)] transition-all duration-500 ${veiculo.ativo ? 'group-hover:scale-110 group-hover:-translate-y-2' : 'grayscale opacity-50'}`}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-white/10">
@@ -223,7 +243,6 @@ export default function VeiculosPage() {
                     <h3 className="text-2xl font-black text-white uppercase tracking-wider">{veiculo.placa}</h3>
                     <p className="text-slate-400 text-sm font-medium uppercase mt-1">{veiculo.modelo}</p>
                     
-                    {/* Exibe o status da última inspeção */}
                     <div className="mt-4 flex items-center gap-2">
                       {veiculo.ultimaInspecaoObjeto ? (
                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 flex items-center gap-1">
@@ -237,10 +256,21 @@ export default function VeiculosPage() {
                     </div>
                   </div>
 
+                  {/* BOTÕES INFERIORES */}
                   <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/5">
-                    <button className="text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1 uppercase tracking-wider transition-colors">
-                      <Power size={14} /> Desativar
+                    
+                    {/* Botão Dinâmico: Ativar / Desativar */}
+                    <button 
+                      onClick={() => toggleStatusVeiculo(veiculo.id, veiculo.ativo)}
+                      className={`text-xs font-bold flex items-center gap-1 uppercase tracking-wider transition-colors ${
+                        veiculo.ativo 
+                          ? 'text-orange-400 hover:text-orange-300' 
+                          : 'text-emerald-400 hover:text-emerald-300'
+                      }`}
+                    >
+                      <Power size={14} /> {veiculo.ativo ? 'Desativar' : 'Ativar'}
                     </button>
+
                     <Link 
                       href={`/gestor/veiculos/${veiculo.id}`}
                       className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 uppercase tracking-wider transition-colors"
