@@ -61,7 +61,9 @@ export default function TecnicoDashboard() {
 
   const formatarDataSegura = (dataString: string) => {
     if (!dataString) return 'Data Inválida'
-    const parts = dataString.split('-')
+    const dataSemHora = dataString.split('T')[0]
+    const parts = dataSemHora.split('-')
+    
     if (parts.length >= 3) {
       const dataLocal = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
       return dataLocal.toLocaleDateString('pt-BR')
@@ -73,7 +75,7 @@ export default function TecnicoDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#080d1a' }}>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
           @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
         <div style={{
@@ -89,7 +91,7 @@ export default function TecnicoDashboard() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
         * { box-sizing: border-box; }
 
@@ -125,7 +127,6 @@ export default function TecnicoDashboard() {
           backdrop-filter: blur(12px);
         }
         .header-greeting {
-          font-family: 'DM Sans', sans-serif;
           font-size: 10px;
           font-weight: 500;
           color: #475569;
@@ -134,7 +135,7 @@ export default function TecnicoDashboard() {
           margin-bottom: 4px;
         }
         .header-name {
-          font-family: 'Syne', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 22px;
           font-weight: 800;
           color: #f1f5f9;
@@ -220,7 +221,7 @@ export default function TecnicoDashboard() {
         .vehicle-placa {
           position: relative;
           z-index: 2;
-          font-family: 'Syne', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 36px;
           font-weight: 800;
           color: #fff;
@@ -242,7 +243,7 @@ export default function TecnicoDashboard() {
           z-index: 2;
         }
         .vehicle-no-car p:first-child {
-          font-family: 'Syne', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 18px;
           font-weight: 700;
           color: #fff;
@@ -284,7 +285,7 @@ export default function TecnicoDashboard() {
           margin-bottom: 14px;
         }
         .status-value {
-          font-family: 'Syne', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 20px;
           font-weight: 800;
           color: #f1f5f9;
@@ -331,7 +332,7 @@ export default function TecnicoDashboard() {
           padding: 20px;
           background: linear-gradient(135deg, #2563eb, #1d4ed8);
           border-radius: 18px;
-          font-family: 'Syne', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 15px;
           font-weight: 800;
           color: #fff;
@@ -413,7 +414,7 @@ export default function TecnicoDashboard() {
           flex-shrink: 0;
         }
         .history-placa {
-          font-family: 'Syne', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 14px;
           font-weight: 700;
           color: #e2e8f0;
