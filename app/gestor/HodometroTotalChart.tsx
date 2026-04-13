@@ -7,93 +7,79 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend, // 🔥 Importamos a Legenda
-  ResponsiveContainer,
-  Cell // 🔥 Importamos Cell para colorir barras individuais
+  ResponsiveContainer 
 } from 'recharts'
 
 type ChartData = {
-  placa: string
+  name: string
   odometer: number
 }
 
-// 🔥 Paleta de cores moderna e profissional (uma cor para cada uma das 8 barras do ranking)
-const CORES_PALETA = [
-  '#3b82f6', // Azul (PZG8449)
-  '#22d3ee', // Ciano (QTU5G95)
-  '#34d399', // Verde (RDK6J27)
-  '#a78bfa', // Roxo (PLL4G81)
-  '#fb923c', // Laranja (SKK8168)
-  '#f87171', // Vermelho (SKK6F34)
-  '#fbbf24', // Amarelo (SKK5C08)
-  '#e2e8f0', // Cinza Claro (SKK9F71)
-]
+export default function HodometroChart({ data }: { data: ChartData[] }) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-[320px] items-center justify-center text-slate-500 text-sm italic">
+        Nenhum dado de hodômetro registrado.
+      </div>
+    )
+  }
 
-export default function HodometroTotalChart({ data }: { data: ChartData[] }) {
-  
   return (
-    <div style={{ width: '100%', height: 350 }}> {/* Altura um pouco maior para a legenda */}
+    <div style={{ width: '100%', height: 320 }}>
       <ResponsiveContainer>
-        <BarChart 
-          data={data} 
-          margin={{ top: 10, right: 10, left: 10, bottom: 10 }} 
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+        <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           
-          {/* Eixo X agora está LIMPO, sem texto das placas */}
+          {/* DEFINIÇÃO DO GRADIENTE */}
+          <defs>
+            <linearGradient id="colorOdometer" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#38bdf8" stopOpacity={1} />
+              <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0.4} />
+            </linearGradient>
+          </defs>
+          
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+          
           <XAxis 
-            dataKey="placa" 
-            tick={false} // 🔥 Removemos o texto das placas daqui
-            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} // Linha sutil
+            dataKey="name" 
+            stroke="#64748b" 
+            fontSize={10} 
+            fontWeight="600"
+            tickLine={false}
+            axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
+            tickMargin={12}
           />
           
           <YAxis 
-            stroke="#94a3b8" 
-            fontSize={11} 
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} // Simplifica pra '136k'
-            width={60}
+            stroke="#64748b" 
+            fontSize={10} 
+            fontWeight="600"
+            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} 
+            width={45}
+            tickLine={false}
+            axisLine={false}
           />
           
-          {/* Tooltip profissional mantido */}
           <Tooltip 
-            cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+            cursor={{ fill: 'rgba(255,255,255,0.02)' }}
             contentStyle={{ 
-              backgroundColor: '#070b3f', 
-              border: '1px solid rgba(255,255,255,0.1)', 
-              borderRadius: '12px',
+              backgroundColor: 'rgba(7, 11, 63, 0.85)', 
+              border: '1px solid rgba(56, 189, 248, 0.2)', 
+              borderRadius: '16px',
               color: '#fff',
-              fontWeight: 'bold',
-              padding: '12px'
+              fontWeight: '800',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(8px)'
             }}
-            formatter={(value: any) => [`${Number(value || 0).toLocaleString('pt-BR')} km`, 'Hodômetro']}
-            labelStyle={{ color: '#fff', marginBottom: '4px' }} // Placa em branco no Tooltip
-          />
-
-          {/* 🔥 ADICIONAMOS A LEGENDA PROFISSIONAL ABAIXO */}
-          <Legend 
-            wrapperStyle={{ paddingTop: '20px' }} // Espaço entre gráfico e legenda
-            iconType="square" // Quadrado colorido na legenda
-            iconSize={12} // Tamanho do ícone
-            formatter={(value, entry, index) => {
-              // value aqui é a 'placa' vinda do dataKey
-              return <span style={{ color: '#e2e8f0', fontSize: '12px', fontWeight: 'bold', marginLeft: '6px' }}>{value}</span>;
-            }}
+            formatter={(value: any) => [`${Number(value || 0).toLocaleString('pt-BR')} km`, 'KM Registrada']}
+            labelStyle={{ color: '#38bdf8', marginBottom: '6px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }}
           />
           
-          {/* Configuração da Barra */}
           <Bar 
             dataKey="odometer" 
-            radius={[6, 6, 0, 0]} 
-            barSize={40}
-          >
-            {/* 🔥 Mágica: Colorimos cada barra usando a paleta */}
-            {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={CORES_PALETA[index % CORES_PALETA.length]} // Pega cor da paleta
-              />
-            ))}
-          </Bar>
+            fill="url(#colorOdometer)" 
+            radius={[8, 8, 0, 0]} 
+            barSize={32}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
