@@ -17,12 +17,13 @@ type MenuItem = {
   roles: Array<'admin' | 'supervisor'>
 }
 
-// Item "Revisões" adicionado logo abaixo de Veículos!
+// Item "Revisões" e o novo "Recibos EPI" adicionados!
 const menuItems: MenuItem[] = [
   { label: 'Painel', href: '/gestor', icon: '⌂', roles: ['admin', 'supervisor'] },
   { label: 'Veículos', href: '/gestor/veiculos', icon: '▣', roles: ['admin', 'supervisor'] },
   { label: 'Revisões', href: '/gestor/revisoes', icon: '🔧', roles: ['admin', 'supervisor'] },
   { label: 'Técnicos', href: '/gestor/tecnicos', icon: '◉', roles: ['admin'] },
+  { label: 'Recibos EPI', href: '/gestor/recibos-epi', icon: '📦', roles: ['admin', 'supervisor'] },
   { label: 'Vínculos', href: '/gestor/vinculos', icon: '⇄', roles: ['admin'] },
   { label: 'Aprovações', href: '/gestor/aprovacoes', icon: '✓', roles: ['admin'] },
   { label: 'Usuários', href: '/gestor/usuarios', icon: '☰', roles: ['admin'] },
