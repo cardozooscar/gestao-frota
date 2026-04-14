@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { Users, UserPlus, Settings2, Mail, Calendar, ShieldCheck, AtSign } from 'lucide-react'
-// Importando o módulo de gestão do EPI
 import GestaoEPIModulo from './GestaoEPIModulo'
 
 type Technician = {
@@ -24,13 +23,11 @@ export default function TecnicosPage() {
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
 
-  // Estados do Formulário
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [senhaInicial, setSenhaInicial] = useState('')
 
   async function fetchTecnicos() {
     setLoading(true)
-    // Busca os perfis que são técnicos ou supervisores
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -54,7 +51,6 @@ export default function TecnicosPage() {
     setSalvando(true)
 
     try {
-      // Aqui você faz a chamada para a sua API Route que cria o usuário no Auth Admin
       const response = await fetch('/api/gestor/tecnicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,7 +76,6 @@ export default function TecnicosPage() {
     <main className="min-h-screen bg-[#02052b] p-4 lg:p-8 text-white">
       <div className="mx-auto max-w-7xl space-y-8">
         
-        {/* HEADER DA PÁGINA */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
@@ -91,7 +86,6 @@ export default function TecnicosPage() {
           </div>
         </div>
 
-        {/* FORMULÁRIO DE NOVO TÉCNICO */}
         <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md">
           <div className="mb-6">
             <h2 className="text-xl font-bold flex items-center gap-2 text-white">
@@ -131,7 +125,6 @@ export default function TecnicosPage() {
           {sucesso && <div className="mt-4 rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-400">{sucesso}</div>}
         </div>
 
-        {/* LISTAGEM DE TÉCNICOS */}
         <div className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md">
           
           <div className="flex flex-col gap-4 border-b border-white/5 pb-6 md:flex-row md:items-end md:justify-between">
@@ -165,7 +158,6 @@ export default function TecnicosPage() {
                     className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-[#2f6eea] hover:shadow-2xl hover:shadow-blue-500/10"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-white/5 pb-4 mb-4">
-                      {/* Nome e Role */}
                       <div>
                         <h3 className="text-xl font-black tracking-tight text-white">{tecnico.nome}</h3>
                         <div className="flex items-center gap-2 mt-2">
@@ -182,7 +174,6 @@ export default function TecnicosPage() {
                       </div>
                     </div>
 
-                    {/* Detalhes do Usuário */}
                     <div className="space-y-3 mb-6">
                       <div className="flex items-center gap-3 text-sm">
                         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#070b3f] border border-white/5 text-slate-400">
@@ -217,7 +208,6 @@ export default function TecnicosPage() {
                       </div>
                     </div>
 
-                    {/* PLUGANDO O MÓDULO DO GESTOR AQUI (Controle de EPI individual) */}
                     <div className="mt-4 pt-6 border-t border-white/10">
                       <h4 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest flex items-center gap-2">
                         <ShieldCheck size={14} className="text-blue-400"/>
