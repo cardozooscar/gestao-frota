@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Lock, Camera, Check, PenTool } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
+// IMPORT CORRIGIDO: Usando a sua conexão oficial
+import { supabase } from '@/lib/supabase' 
 
 const LISTA_ITENS = ['Camisa', 'Calça', 'Bota', 'Chapéu', 'Capacete', 'Óculos', 'Luva']
 
@@ -10,10 +11,6 @@ type ItemState = { selecionado: boolean; quantidade: string; tamanho: string }
 type FormData = Record<string, ItemState>
 
 export default function SolicitacaoEPI({ technicianId }: { technicianId: string }) {
-  const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
   
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -30,17 +27,22 @@ export default function SolicitacaoEPI({ technicianId }: { technicianId: string 
 
   useEffect(() => {
     async function checkLock() {
-      const { data } = await supabase
+      // Busca no banco se está liberado
+      const { data, error } = await supabase
         .from('profiles')
         .select('epi_unlocked')
         .eq('id', technicianId)
         .single()
         
-      if (data) setIsUnlocked(data.epi_unlocked)
+      if (data) {
+        setIsUnlocked(data.epi_unlocked)
+      } else if (error) {
+        console.error('Erro ao ler trava:', error)
+      }
       setLoading(false)
     }
     checkLock()
-  }, [technicianId, supabase])
+  }, [technicianId])
 
   const startDrawing = (e: any) => {
     isDrawing = true
@@ -130,7 +132,7 @@ export default function SolicitacaoEPI({ technicianId }: { technicianId: string 
     }
   }
 
-  if (loading) return <div className="text-white text-center p-8">Carregando...</div>
+  if (loading) return <div className="text-white text-center p-8 border border-white/10 rounded-2xl">Lendo permissões...</div>
 
   if (!isUnlocked) {
     return (
@@ -147,7 +149,7 @@ export default function SolicitacaoEPI({ technicianId }: { technicianId: string 
   }
 
   return (
-    <div className="rounded-3xl border border-blue-500/30 bg-[#070b3f]/80 p-6 backdrop-blur-md shadow-2xl">
+    <div className="rounded-3xl border border-blue-500/30 bg-[#070b3f]/80 p-6 backdrop-blur-md shadow-2xl mt-4">
       <h2 className="text-xl font-bold text-white border-b border-white/10 pb-4 mb-6">Nova Solicitação de Material</h2>
 
       <div className="space-y-3 mb-8">
