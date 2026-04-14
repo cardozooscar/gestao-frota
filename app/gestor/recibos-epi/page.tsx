@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Eye, Calendar, User, Package, X, FileText } from 'lucide-react'
+import { Eye, Calendar, User, Package, X, FileText, Camera, PenTool } from 'lucide-react'
 
-// Tipagem unindo o recibo com o nome do técnico (JOIN Profiles)
 type EpiRequest = {
   id: string
   created_at: string
@@ -28,133 +27,112 @@ export default function RecibosEPIPage() {
     try {
       const { data, error } = await supabase
         .from('epi_requests')
-        .select(`
-          *,
-          profiles:technician_id ( nome )
-        `)
+        .select(`*, profiles:technician_id ( nome )`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      
-      const recibosProcessados = data as EpiRequest[];
-      setRecibos(recibosProcessados)
-      
-      // LOG DE AJUDA: Isso vai nos dizer o que está vindo do banco
-      console.log('Recibos carregados do banco (primeiro item):', recibosProcessados[0]);
-
+      setRecibos(data as EpiRequest[])
     } catch (error) {
-      console.error('Erro ao buscar recibos:', error)
+      console.error('Erro:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // Função nativa para formatar data de forma compacta (ex: 14/04/2026, 16:59)
-  const formatarDataLocalCompacta = (dataIso: string) => {
-    return new Date(dataIso).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const formatarData = (iso: string) => {
+    return new Date(iso).toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
 
-  if (loading) {
-    return (
-      <div className="p-8 flex justify-center">
-        <p className="text-slate-500 animate-pulse text-sm">Sincronizando com a Fibranet...</p>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-[#02052b] flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
+    </div>
+  )
 
   return (
-    <div className="p-4 lg:p-8">
-      {/* HEADER DA PÁGINA */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
-              <Package size={14} /> Logística
+    <main className="min-h-screen bg-[#02052b] p-4 lg:p-8 text-white">
+      <div className="mx-auto max-w-7xl space-y-8">
+        
+        {/* HEADER PADRÃO FIBRANET */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
+            <FileText size={14} /> Logística
+          </div>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Central de Recibos</h1>
+          <p className="text-sm text-slate-400">Histórico documentado de EPI e Materiais.</p>
+        </div>
+
+        {/* LISTAGEM EM GRID DARK */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {recibos.length === 0 ? (
+            <div className="col-span-full py-20 text-center border-2 border-dashed border-white/10 rounded-3xl text-slate-500">
+              Nenhum recibo assinado até o momento.
             </div>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Central de Recibos</h1>
-            <p className="mt-2 text-sm text-slate-400">Histórico documentado de entregas de fardamento e EPI.</p>
-          </div>
-      </div>
-
-      {/* LISTAGEM DE CARDS (Simplified e clean) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {recibos.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-12 text-center text-slate-500 italic text-sm">
-             Nenhum recibo assinado foi encontrado ainda.
-          </div>
-        ) : (
-          recibos.map((recibo) => (
-            <div 
-              key={recibo.id}
-              className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-lg transition-all cursor-pointer hover:border-blue-300"
-              onClick={() => setSelectedRecibo(recibo)}
-            >
-              <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
-                <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
-                  <Package size={22} />
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-black uppercase tracking-widest bg-slate-100 px-3 py-1.5 rounded-full text-slate-500 border border-slate-200 shadow-inner">
-                    EPI-#{recibo.id.slice(0, 5)}
-                  </span>
-                  <p className="text-xs text-slate-500 mt-2">{formatarDataLocalCompacta(recibo.created_at)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 text-slate-800 font-extrabold text-base">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 text-slate-500">
-                    <User size={16} />
+          ) : (
+            recibos.map((recibo) => (
+              <div 
+                key={recibo.id}
+                onClick={() => setSelectedRecibo(recibo)}
+                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-blue-500/50 hover:bg-white/[0.07] cursor-pointer"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
+                    <Package size={20} />
                   </div>
-                  {recibo.profiles?.nome || 'Técnico'}
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md">
+                    #{recibo.id.slice(0, 5)}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-bold text-white mb-1">{recibo.profiles?.nome || 'Técnico'}</h3>
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  <Calendar size={12} /> {formatarData(recibo.created_at)}
+                </p>
+
+                <div className="mt-6 flex items-center justify-between text-blue-400 text-xs font-bold uppercase tracking-wider">
+                  <span>Ver Detalhes</span>
+                  <Eye size={16} />
                 </div>
               </div>
-
-              <button className="mt-6 w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl transition hover:scale-[1.01] shadow-md shadow-blue-500/30">
-                <Eye size={18} /> Visualizar Detalhes
-              </button>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
 
-      {/* MODAL DE DETALHES - Revertido para o visual original da imagem (image_10.png) */}
+      {/* MODAL DARK - IDENTIDADE VISUAL DO SISTEMA */}
       {selectedRecibo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-200">
-            {/* Header simples do modal */}
-            <div className="flex justify-between items-center p-6 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-800">Recibo Assinado</h2>
-              <button onClick={() => setSelectedRecibo(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-[#070b3f] w-full max-w-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in duration-200">
+            
+            <div className="flex justify-between items-center p-6 border-b border-white/10 bg-white/5">
+              <h2 className="text-xl font-bold text-white">Recibo de Entrega</h2>
+              <button onClick={() => setSelectedRecibo(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-400 transition-colors">
                 <X size={24} />
               </button>
             </div>
 
-            {/* Corpo do Modal com scroll */}
-            <div className="p-6 max-h-[80vh] overflow-y-auto space-y-8">
-              {/* ITENS SOLICITADOS - Tabela compacta */}
+            <div className="p-6 max-h-[75vh] overflow-y-auto space-y-8">
+              
+              {/* TABELA DE ITENS */}
               <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Materiais Entregues</h3>
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-inner">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-slate-500 border-b border-slate-200 bg-slate-50">
-                        <th className="pb-2 font-bold px-4 pt-3">Item</th>
-                        <th className="pb-2 text-center font-bold px-4 pt-3">Qtd</th>
-                        <th className="pb-2 text-right font-bold px-4 pt-3">Tam</th>
+                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] mb-3">Materiais Retirados</h4>
+                <div className="rounded-2xl border border-white/5 bg-black/20 overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-white/5 text-[10px] uppercase text-slate-500 font-bold">
+                      <tr>
+                        <th className="px-4 py-3">Item</th>
+                        <th className="px-4 py-3 text-center">Qtd</th>
+                        <th className="px-4 py-3 text-right">Tamanho</th>
                       </tr>
                     </thead>
-                    <tbody className="text-slate-700">
+                    <tbody className="text-slate-300">
                       {Object.entries(selectedRecibo.items).map(([nome, dados]: any) => (
-                        <tr key={nome} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                          <td className="py-2.5 font-medium px-4">{nome}</td>
-                          <td className="py-2.5 text-center px-4">{dados.qtd}</td>
-                          <td className="py-2.5 text-right uppercase px-4">{dados.tam || '-'}</td>
+                        <tr key={nome} className="border-t border-white/5">
+                          <td className="px-4 py-3 font-medium text-white">{nome}</td>
+                          <td className="px-4 py-3 text-center">{dados.qtd}</td>
+                          <td className="px-4 py-3 text-right uppercase">{dados.tam || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -162,45 +140,51 @@ export default function RecibosEPIPage() {
                 </div>
               </div>
 
-              {/* FOTOS E COMPROVAÇÃO - Caixas cinzas limpas (Exatamente como a imagem mandada) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-1">Selfie do Técnico</h3>
-                  <div className="aspect-square rounded-xl bg-slate-200 border border-slate-300 overflow-hidden flex items-center justify-center p-2 text-center shadow-inner">
-                    {/* TENTATIVA 2 DO FIX DO ERRO: Fallback simples */}
-                    <img
-                      src={selectedRecibo.photo_url}
-                      alt="Selfie"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error("Falha ao carregar selfie:", selectedRecibo.photo_url);
-                        (e.currentTarget as HTMLImageElement).src = 'https://via.placeholder.com/400?text=Erro+no+Link';
-                        (e.currentTarget as HTMLImageElement).title = 'Link incorreto no banco de dados';
-                      }}
-                    />
+              {/* FOTOS E COMPROVAÇÃO */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Camera size={14} /> Selfie de Identificação
+                  </h4>
+                  <div className="aspect-square rounded-2xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center relative group">
+                    {selectedRecibo.photo_url.includes('url_da_foto') ? (
+                      <span className="text-[10px] text-slate-600 font-bold italic">RECIBO DE TESTE (SEM FOTO)</span>
+                    ) : (
+                      <img 
+                        src={selectedRecibo.photo_url} 
+                        className="w-full h-full object-cover transition-transform group-hover:scale-110" 
+                        alt="Selfie"
+                        onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/400?text=Erro+no+Link")}
+                      />
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-1">Assinatura Digital</h3>
-                  <div className="aspect-square md:aspect-[4/1] rounded-xl bg-white border border-slate-300 flex items-center justify-center p-4 shadow-inner">
-                     <img
-                      src={selectedRecibo.signature_url}
-                      alt="Assinatura"
-                      className="max-w-full max-h-full object-contain"
-                      onError={(e) => {
-                        console.error("Falha ao carregar assinatura:", selectedRecibo.signature_url);
-                        (e.currentTarget as HTMLImageElement).src = 'https://via.placeholder.com/400x100?text=Erro+no+Link';
-                      }}
-                    />
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <PenTool size={14} /> Assinatura Digital
+                  </h4>
+                  <div className="aspect-square md:aspect-auto md:h-full rounded-2xl bg-white flex items-center justify-center p-4 border-4 border-white/5 shadow-inner">
+                    {selectedRecibo.signature_url.includes('url_da_assinatura') ? (
+                      <span className="text-[10px] text-slate-400 font-bold italic">SEM ASSINATURA</span>
+                    ) : (
+                      <img 
+                        src={selectedRecibo.signature_url} 
+                        className="max-w-full max-h-full object-contain grayscale" 
+                        alt="Assinatura" 
+                      />
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
 
+            <div className="p-6 border-t border-white/10 bg-white/5 flex justify-center">
+               <p className="text-[10px] text-slate-500 font-medium">Recibo gerado digitalmente pelo Sistema de Gestão de Frota - Fibranet Brasil</p>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }
