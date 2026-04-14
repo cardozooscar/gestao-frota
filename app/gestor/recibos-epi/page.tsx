@@ -1,245 +1,168 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Package, User, PenTool, Image as ImageIcon, Search } from 'lucide-react'
-
-// Tipagem unindo o recibo com o nome do técnico (que vem da tabela profiles)
-type EpiRequest = {
-  id: string
-  created_at: string
-  items: any
-  photo_url: string
-  signature_url: string
-  profiles: { nome: string } | null
-}
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Eye, Calendar, User, Package, X } from 'lucide-react'
 
 export default function RecibosEPIPage() {
-  const [dataAtual, setDataAtual] = useState(new Date())
-  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null)
-  const [recibosMes, setRecibosMes] = useState<EpiRequest[]>([])
+  const [recibos, setRecibos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedRecibo, setSelectedRecibo] = useState<any>(null)
 
-  // Busca os recibos sempre que o mês/ano mudar
   useEffect(() => {
-    fetchRecibosDoMes()
-  }, [dataAtual.getMonth(), dataAtual.getFullYear()])
+    fetchRecibos()
+  }, [])
 
-  async function fetchRecibosDoMes() {
-    setLoading(true)
-    const ano = dataAtual.getFullYear()
-    const mes = dataAtual.getMonth()
-    
-    // Pega o primeiro e último dia do mês para filtrar no banco
-    const primeiroDia = new Date(ano, mes, 1).toISOString()
-    const ultimoDia = new Date(ano, mes + 1, 0, 23, 59, 59).toISOString()
+  async function fetchRecibos() {
+    try {
+      const { data, error } = await supabase
+        .from('epi_requests')
+        .select(`
+          *,
+          profiles:technician_id ( nome )
+        `)
+        .order('created_at', { ascending: false })
 
-    const { data, error } = await supabase
-      .from('epi_requests')
-      .select('*, profiles(nome)') // Faz o JOIN automático com a tabela de perfis
-      .gte('created_at', primeiroDia)
-      .lte('created_at', ultimoDia)
-      .order('created_at', { ascending: false })
-
-    if (data) setRecibosMes(data as EpiRequest[])
-    setLoading(false)
+      if (error) throw error
+      setRecibos(data || [])
+    } catch (error) {
+      console.error('Erro ao buscar recibos:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Funções de navegação do calendário
-  const prevMonth = () => setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1))
-  const nextMonth = () => setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 1))
-
-  // Lógica para montar os quadradinhos do calendário
-  const diasNoMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 0).getDate()
-  const primeiroDiaDoMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1).getDay()
-  
-  const diasEmBranco = Array.from({ length: primeiroDiaDoMes })
-  const diasDoMes = Array.from({ length: diasNoMes }, (_, i) => i + 1)
-
-  // Formata a data selecionada para YYYY-MM-DD
-  const formatarDataLocal = (dia: number) => {
-    const ano = dataAtual.getFullYear()
-    const mes = String(dataAtual.getMonth() + 1).padStart(2, '0')
-    const diaFormatado = String(dia).padStart(2, '0')
-    return `${ano}-${mes}-${diaFormatado}`
+  if (loading) {
+    return (
+      <div className="p-8 flex justify-center">
+        <p className="text-slate-500 animate-pulse">Carregando recibos de EPI...</p>
+      </div>
+    )
   }
-
-  // Filtra os recibos para mostrar só os do dia que o gestor clicou
-  const recibosDoDiaSelecionado = recibosMes.filter(req => {
-    if (!diaSelecionado) return false
-    return req.created_at.startsWith(diaSelecionado)
-  })
 
   return (
-    <main className="min-h-screen bg-[#02052b] p-4 lg:p-8 text-white">
-      <div className="mx-auto max-w-7xl space-y-8">
-        
-        {/* HEADER */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/20 text-blue-400">
-            <CalendarIcon size={24} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-white">Central de Recibos (EPI)</h1>
-            <p className="text-sm text-slate-400">Gerencie as entregas de fardamento e materiais por data.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* COLUNA ESQUERDA: O CALENDÁRIO */}
-          <div className="lg:col-span-1 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md h-fit">
-            
-            {/* Controles do Mês */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white capitalize">
-                {dataAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
-              </h2>
-              <div className="flex gap-2">
-                <button onClick={prevMonth} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                  <ChevronLeft size={18} />
-                </button>
-                <button onClick={nextMonth} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* Cabeçalho dos dias da semana */}
-            <div className="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-bold text-slate-500">
-              <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
-            </div>
-
-            {/* Grid de Dias */}
-            <div className="grid grid-cols-7 gap-2">
-              {diasEmBranco.map((_, i) => (
-                <div key={`blank-${i}`} className="h-10 rounded-xl bg-transparent" />
-              ))}
-              
-              {diasDoMes.map(dia => {
-                const dataFormatada = formatarDataLocal(dia)
-                // Verifica se tem recibo nesse dia para colocar a "bolinha" indicadora
-                const temRecibo = recibosMes.some(req => req.created_at.startsWith(dataFormatada))
-                const isSelecionado = diaSelecionado === dataFormatada
-
-                return (
-                  <button
-                    key={dia}
-                    onClick={() => setDiaSelecionado(dataFormatada)}
-                    className={`relative flex h-10 w-full items-center justify-center rounded-xl text-sm font-medium transition-all ${
-                      isSelecionado 
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 font-bold scale-105' 
-                        : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                    }`}
-                  >
-                    {dia}
-                    {temRecibo && !isSelecionado && (
-                      <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-blue-400"></span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            
-            {loading && <p className="text-center text-xs text-slate-500 mt-6 animate-pulse">Buscando dados do mês...</p>}
-          </div>
-
-          {/* COLUNA DIREITA: OS RECIBOS DO DIA */}
-          <div className="lg:col-span-2">
-            {!diaSelecionado ? (
-              <div className="flex h-full min-h-[400px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-white/10 bg-white/5 text-slate-500">
-                <Search size={48} className="mb-4 opacity-20" />
-                <p>Selecione um dia no calendário para ver os recibos.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                  <span className="bg-blue-500 w-2 h-6 rounded-full inline-block"></span>
-                  Entregas do dia {diaSelecionado.split('-').reverse().join('/')}
-                </h3>
-
-                {recibosDoDiaSelecionado.length === 0 ? (
-                  <p className="text-slate-400 italic bg-white/5 p-6 rounded-2xl border border-white/10">Nenhum registro de fardamento para esta data.</p>
-                ) : (
-                  recibosDoDiaSelecionado.map(req => (
-                    <div key={req.id} className="rounded-2xl border border-white/10 bg-[#070b3f]/60 p-6 backdrop-blur-md shadow-xl">
-                      
-                      {/* Cabeçalho do Card */}
-                      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400">
-                            <User size={20} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-white">{req.profiles?.nome || 'Técnico Desconhecido'}</p>
-                            <p className="text-xs text-slate-400">
-                              Hora: {new Date(req.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute:'2-digit' })}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-400 uppercase border border-emerald-500/20">
-                          Assinado
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Lista de Itens */}
-                        <div>
-                          <h4 className="mb-3 text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                            <Package size={14} /> Materiais Retirados
-                          </h4>
-                          <div className="space-y-2">
-                            {Object.entries(req.items).map(([nome, info]: any) => (
-                              <div key={nome} className="flex items-center justify-between rounded-lg bg-black/30 px-4 py-2 border border-white/5">
-                                <span className="text-slate-200 text-sm">{nome}</span>
-                                <div className="text-xs text-slate-400">
-                                  Qtd: <b className="text-white">{info.qtd}</b> | Tam: <b className="text-white">{info.tam || '-'}</b>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Provas Visuais */}
-                        <div>
-                           <h4 className="mb-3 text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                            <PenTool size={14} /> Comprovações Digitais
-                          </h4>
-                          <div className="flex gap-4">
-                            {/* AQUI É ONDE A IMAGEM ESTÁ QUEBRADA - Coloquei um fallback para ficar bonito até você arrumar o Storage */}
-                            <div className="flex-1 space-y-1">
-                              <p className="text-[10px] text-slate-500 uppercase text-center">Selfie</p>
-                              <div className="aspect-square rounded-xl bg-black/50 border border-white/10 overflow-hidden relative flex items-center justify-center">
-                                {req.photo_url === 'url_da_foto.jpg' ? (
-                                  <ImageIcon size={24} className="text-slate-600" />
-                                ) : (
-                                  <img src={req.photo_url} alt="Selfie" className="w-full h-full object-cover" />
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <p className="text-[10px] text-slate-500 uppercase text-center">Assinatura</p>
-                              <div className="aspect-square rounded-xl bg-white p-2 border border-white/10 overflow-hidden flex items-center justify-center">
-                                 {req.signature_url === 'url_da_assinatura.png' ? (
-                                  <span className="text-[8px] text-slate-400">Assinatura Simulada</span>
-                                ) : (
-                                  <img src={req.signature_url} alt="Assinatura" className="w-full h-full object-contain grayscale" />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-        </div>
+    <div className="p-4 lg:p-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Recibos de EPI</h1>
+        <p className="text-sm text-slate-500">Histórico de entregas e assinaturas digitais</p>
       </div>
-    </main>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {recibos.map((recibo) => (
+          <div 
+            key={recibo.id}
+            className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setSelectedRecibo(recibo)}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className="bg-blue-50 p-2 rounded-lg">
+                <Package className="text-blue-600" size={20} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded text-slate-500">
+                #{recibo.id.slice(0, 8)}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                <User size={16} className="text-slate-400" />
+                {recibo.profiles?.nome || 'Técnico não identificado'}
+              </div>
+              <div className="flex items-center gap-2 text-slate-500 text-sm">
+                <Calendar size={16} className="text-slate-400" />
+                {format(new Date(recibo.created_at), "dd 'de' MMMM, HH:mm", { locale: ptBR })}
+              </div>
+            </div>
+
+            <button className="mt-4 w-full flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold rounded-lg transition">
+              <Eye size={16} /> Visualizar Recibo
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* MODAL DE DETALHES */}
+      {selectedRecibo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100">
+              <h2 className="text-xl font-bold text-slate-800">Detalhes do Recibo</h2>
+              <button onClick={() => setSelectedRecibo(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[80vh] overflow-y-auto">
+              {/* ITENS SOLICITADOS */}
+              <div className="mb-8">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Materiais Entregues</h3>
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500 border-b border-slate-200">
+                        <th className="pb-2">Item</th>
+                        <th className="pb-2 text-center">Qtd</th>
+                        <th className="pb-2 text-right">Tam</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-700">
+                      {Object.entries(selectedRecibo.items).map(([nome, dados]: any) => (
+                        <tr key={nome} className="border-b border-slate-100 last:border-0">
+                          <td className="py-2 font-medium">{nome}</td>
+                          <td className="py-2 text-center">{dados.qtd}</td>
+                          <td className="py-2 text-right uppercase">{dados.tam || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* FOTOS E COMPROVAÇÃO */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Selfie do Técnico</h3>
+                  <div className="aspect-square rounded-xl bg-slate-200 border border-slate-200 overflow-hidden shadow-inner">
+                    <img 
+                      src={selectedRecibo.photo_url} 
+                      alt="Selfie" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/400x400/e2e8f0/64748b?text=Erro+ao+carregar+foto';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Assinatura Digital</h3>
+                  <div className="aspect-square md:aspect-auto md:h-[calc(100%-1.5rem)] rounded-xl bg-white border border-slate-200 flex items-center justify-center p-4 shadow-inner">
+                    <img 
+                      src={selectedRecibo.signature_url} 
+                      alt="Assinatura" 
+                      className="max-w-full max-h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/400x200/ffffff/64748b?text=Erro+na+Assinatura';
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 text-center">
+              <button 
+                onClick={() => window.print()}
+                className="text-sm font-bold text-blue-600 hover:text-blue-700"
+              >
+                Imprimir Comprovante
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
