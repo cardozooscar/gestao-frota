@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Lock, Camera, Check, PenTool } from 'lucide-react'
-// IMPORT CORRIGIDO: Usando a sua conexão oficial
 import { supabase } from '@/lib/supabase' 
 
 const LISTA_ITENS = ['Camisa', 'Calça', 'Bota', 'Chapéu', 'Capacete', 'Óculos', 'Luva']
@@ -27,7 +26,6 @@ export default function SolicitacaoEPI({ technicianId }: { technicianId: string 
 
   useEffect(() => {
     async function checkLock() {
-      // Busca no banco se está liberado
       const { data, error } = await supabase
         .from('profiles')
         .select('epi_unlocked')
@@ -93,40 +91,75 @@ export default function SolicitacaoEPI({ technicianId }: { technicianId: string 
     }))
   }
 
+  // FUNÇÃO NOVA: Transforma o desenho do Canvas em um Arquivo de Imagem
+  const getCanvasBlob = async (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob)
+      }, 'image/png')
+    })
+  }
+
   const handleSubmit = async () => {
     const itensSelecionados = Object.entries(formData).filter(([_, data]) => data.selecionado)
     if (itensSelecionados.length === 0) return alert('Selecione pelo menos um item.')
     if (!fotoBlob) return alert('É obrigatório registrar uma foto do rosto.')
     
     const canvas = canvasRef.current
-    const isCanvasBlank = canvas?.toDataURL() === document.createElement('canvas').toDataURL()
+    if (!canvas) return
+    const isCanvasBlank = canvas.toDataURL() === document.createElement('canvas').toDataURL()
     if (isCanvasBlank) return alert('A assinatura é obrigatória.')
 
     setSalvando(true)
 
     try {
-      const urlFotoSimulada = 'url_da_foto.jpg'
-      const urlAssinaturaSimulada = 'url_da_assinatura.png'
+      const timestamp = Date.now()
+      
+      // 1. UPLOAD DA FOTO (SELFIE)
+      const fotoNome = `${technicianId}-foto-${timestamp}.jpg`
+      const { error: fotoError } = await supabase.storage
+        .from('epi_files')
+        .upload(fotoNome, fotoBlob)
+      
+      if (fotoError) throw new Error('Erro ao salvar foto: ' + fotoError.message)
+      
+      const fotoUrlReal = supabase.storage.from('epi_files').getPublicUrl(fotoNome).data.publicUrl
 
+      // 2. UPLOAD DA ASSINATURA (CANVAS)
+      const assinaturaBlob = await getCanvasBlob(canvas)
+      if (!assinaturaBlob) throw new Error('Erro ao processar assinatura')
+
+      const assNome = `${technicianId}-ass-${timestamp}.png`
+      const { error: assError } = await supabase.storage
+        .from('epi_files')
+        .upload(assNome, assinaturaBlob)
+      
+      if (assError) throw new Error('Erro ao salvar assinatura: ' + assError.message)
+
+      const assUrlReal = supabase.storage.from('epi_files').getPublicUrl(assNome).data.publicUrl
+
+      // 3. PREPARAR OS ITENS PARA O BANCO DE DADOS
       const itensParaSalvar = itensSelecionados.reduce((acc, [nome, dados]) => {
         return { ...acc, [nome]: { qtd: dados.quantidade, tam: dados.tamanho } }
       }, {})
 
+      // 4. SALVAR O RECIBO FINAL COM OS LINKS VERDADEIROS
       await supabase.from('epi_requests').insert([{
         technician_id: technicianId,
         items: itensParaSalvar,
-        photo_url: urlFotoSimulada,
-        signature_url: urlAssinaturaSimulada
+        photo_url: fotoUrlReal,
+        signature_url: assUrlReal
       }])
 
+      // 5. BLOQUEAR A ABA NOVAMENTE
       await supabase.from('profiles').update({ epi_unlocked: false }).eq('id', technicianId)
       
-      alert('Solicitação enviada com sucesso!')
+      alert('Solicitação enviada e documentada com sucesso!')
       setIsUnlocked(false)
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert('Erro ao enviar solicitação.')
+      alert('Erro no envio: ' + error.message)
     } finally {
       setSalvando(false)
     }
@@ -237,7 +270,7 @@ export default function SolicitacaoEPI({ technicianId }: { technicianId: string 
         disabled={salvando}
         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-[1.02] transition-transform disabled:opacity-50"
       >
-        {salvando ? 'Processando...' : <><Check size={20} /> Confirmar e Assinar Recibo</>}
+        {salvando ? 'Enviando Imagens e Recibo...' : <><Check size={20} /> Confirmar e Assinar Recibo</>}
       </button>
 
     </div>
