@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { Car, FileText, Camera, LogOut, ChevronRight, AlertCircle, CheckCircle2, Shield } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+// Importando o nosso componente novo
+import SolicitacaoEPI from './SolicitacaoEPI' 
 
 export default function TecnicoDashboard() {
   const router = useRouter()
@@ -20,8 +22,9 @@ export default function TecnicoDashboard() {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) { router.push('/login'); return }
 
+        // AJUSTE: Adicionamos o 'id' na busca para passar pro componente depois
         const { data: profile } = await supabase
-          .from('profiles').select('nome, username').eq('id', user.id).maybeSingle()
+          .from('profiles').select('id, nome, username').eq('id', user.id).maybeSingle()
         setUserProfile(profile)
 
         const { data: assignment } = await supabase
@@ -527,8 +530,15 @@ export default function TecnicoDashboard() {
             </div>
           </Link>
 
+          {/* PLUGANDO A ABA DE SOLICITAÇÃO DE EPI AQUI! */}
+          {userProfile?.id && (
+            <div style={{ marginTop: '8px' }}>
+               <SolicitacaoEPI technicianId={userProfile.id} />
+            </div>
+          )}
+
           {/* HISTORY */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: '8px' }}>
             <div className="section-divider">
               <div className="divider-line" />
               <div className="history-label">

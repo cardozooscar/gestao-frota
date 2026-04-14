@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { Users, UserPlus, Settings2, Mail, Calendar, ShieldCheck, AtSign } from 'lucide-react'
+// Importando o módulo de gestão do EPI
+import GestaoEPIModulo from './GestaoEPIModulo'
 
 type Technician = {
   id: string
@@ -160,7 +162,7 @@ export default function TecnicosPage() {
                 {tecnicos.map((tecnico) => (
                   <div
                     key={tecnico.id}
-                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:-translate-y-1 hover:border-[#2f6eea] hover:shadow-2xl hover:shadow-blue-500/10"
+                    className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 transition-all hover:border-[#2f6eea] hover:shadow-2xl hover:shadow-blue-500/10"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-white/5 pb-4 mb-4">
                       {/* Nome e Role */}
@@ -181,7 +183,7 @@ export default function TecnicosPage() {
                     </div>
 
                     {/* Detalhes do Usuário */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-6">
                       <div className="flex items-center gap-3 text-sm">
                         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#070b3f] border border-white/5 text-slate-400">
                           <AtSign size={14} />
@@ -213,6 +215,15 @@ export default function TecnicosPage() {
                           </p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* PLUGANDO O MÓDULO DO GESTOR AQUI (Controle de EPI individual) */}
+                    <div className="mt-4 pt-6 border-t border-white/10">
+                      <h4 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest flex items-center gap-2">
+                        <ShieldCheck size={14} className="text-blue-400"/>
+                        Controle de Fardamento e EPI
+                      </h4>
+                      <GestaoEPIModulo technicianId={tecnico.id} />
                     </div>
 
                   </div>
