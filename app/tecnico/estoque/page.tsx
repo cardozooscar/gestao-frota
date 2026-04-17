@@ -3,139 +3,185 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { 
-  Package, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  Plus, 
-  Minus,
-  Calendar,
-  Save,
-  Loader2,
-  Cpu
+  Package, CheckCircle2, XCircle, AlertTriangle, 
+  Plus, Minus, Calendar, Save, Loader2, Cpu, History
 } from 'lucide-react'
+
+// Atalhos baseados no seu estoque real
+const MODELOS_COMUNS = [
+  'HUAWEI V2', 
+  'HUAWEI V5', 
+  'ONU BRIDGE', 
+  'XSRIUS', 
+  'TP-LINK', 
+  'ZTE'
+]
 
 export default function ProducaoEstoquePage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [enviando, setEnviando] = useState(false)
   
-  // Dados do Lançamento
   const [modelo, setModelo] = useState('')
   const [quantidade, setQuantidade] = useState(1)
   const [status, setStatus] = useState('Aprovado')
-  const dataHoje = new Date().toLocaleDateString('pt-BR')
+  const [meuTotalHoje, setMeuTotalHoje] = useState(0)
+  const [ultimosTestes, setUltimosTestes] = useState<any[]>([])
+
+  const dataHojeStr = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
-    async function getUser() {
+    async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
+      if (user) fetchMeuProgresso(user.id)
       setLoading(false)
     }
-    getUser()
+    loadData()
   }, [])
 
-  async function salvarProducao() {
-    if (!modelo) return alert('Informe o modelo do equipamento!')
-    if (quantidade <= 0) return alert('A quantidade deve ser maior que zero!')
+  async function fetchMeuProgresso(userId: string) {
+    // Totalizador de hoje para o técnico
+    const { data: total } = await supabase
+      .from('estoque_producao_diaria')
+      .select('quantidade')
+      .eq('tecnico_id', userId)
+      .eq('data_referencia', dataHojeStr)
+
+    const soma = total?.reduce((acc, curr) => acc + curr.quantidade, 0) || 0
+    setMeuTotalHoje(soma)
+
+    // Histórico para conferência imediata
+    const { data: lista } = await supabase
+      .from('estoque_producao_diaria')
+      .select('*')
+      .eq('tecnico_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5)
     
+    if (lista) setUltimosTestes(lista)
+  }
+
+  async function salvarProducao() {
+    if (!modelo) return alert('Selecione ou digite o modelo!')
     setEnviando(true)
+
     const { error } = await supabase.from('estoque_producao_diaria').insert([{
       modelo: modelo.toUpperCase().trim(),
       quantidade: quantidade,
       status: status,
-      tecnico_id: user.id
+      tecnico_id: user.id,
+      data_referencia: dataHojeStr
     }])
 
     if (error) {
-      alert('Erro ao salvar: ' + error.message)
+      alert('Erro: ' + error.message)
     } else {
-      alert('Lançamento realizado com sucesso!')
       setModelo('')
       setQuantidade(1)
+      fetchMeuProgresso(user.id)
     }
     setEnviando(false)
   }
 
-  if (loading) return <div className="min-h-screen bg-[#02052b] flex items-center justify-center text-blue-500"><Loader2 className="animate-spin" /></div>
+  if (loading) return (
+    <div className="min-h-screen bg-[#02052b] flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-500" size={32} />
+    </div>
+  )
 
   return (
-    <main className="min-h-screen bg-[#02052b] p-4 text-white">
+    <main className="min-h-screen bg-[#02052b] p-4 text-white pb-10">
       <div className="max-w-md mx-auto space-y-6">
         
-        {/* HEADER COM DATA */}
-        <div className="pt-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
-              <Package size={14} /> Produção Diária
+        {/* INDICADOR DE PERFORMANCE DIÁRIA */}
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-900 p-6 rounded-[2rem] shadow-xl shadow-blue-950/50 border border-white/10">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200/70 mb-1">Produção do Turno</p>
+              <h2 className="text-6xl font-black tracking-tighter">{meuTotalHoje}</h2>
             </div>
-            <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-              <Calendar size={12} className="text-blue-400" />
-              <span className="text-[10px] font-bold">{dataHoje}</span>
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+              <Package className="text-white" size={24} />
             </div>
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Bancada de Reuso</h1>
+          <p className="mt-2 text-xs font-bold text-blue-200">Equipamentos validados hoje</p>
         </div>
 
-        {/* CARD PRINCIPAL */}
-        <div className="bg-white/5 p-6 rounded-3xl border border-white/10 backdrop-blur-md space-y-6">
+        {/* ÁREA DE LANÇAMENTO */}
+        <div className="bg-[#070b3f] p-6 rounded-[2rem] border border-white/5 shadow-2xl space-y-6">
           
-          {/* MODELO */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Modelo do Equipamento</label>
-            <div className="relative">
+          <div className="space-y-4">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Selecione o Equipamento</label>
+            
+            {/* GRID DE MODELOS RÁPIDOS */}
+            <div className="grid grid-cols-3 gap-2">
+              {MODELOS_COMUNS.map(m => (
+                <button 
+                  key={m}
+                  onClick={() => setModelo(m)}
+                  className={`py-3 rounded-xl text-[9px] font-black border transition-all ${
+                    modelo === m 
+                    ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20' 
+                    : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative pt-2">
+              <div className="absolute left-4 top-[22px] text-slate-500">
+                <Cpu size={16} />
+              </div>
               <input 
                 type="text" 
                 value={modelo}
                 onChange={(e) => setModelo(e.target.value)}
-                placeholder="Ex: ONU HG8245H, Roteador AX3..."
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 pl-11 text-sm focus:border-blue-500 outline-none transition-all placeholder:text-slate-600 uppercase"
+                placeholder="OUTRO MODELO..."
+                className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-4 pl-12 text-xs font-bold focus:border-blue-500 outline-none uppercase transition-all"
               />
-              <Cpu className="absolute left-4 top-3.5 text-slate-500" size={18} />
             </div>
           </div>
 
-          {/* QUANTIDADE COM CONTROLES */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase text-center block">Quantidade Testada</label>
-            <div className="flex items-center justify-center gap-6">
+          {/* AJUSTE DE QUANTIDADE */}
+          <div className="bg-black/40 rounded-3xl p-2 border border-white/5">
+            <div className="flex items-center justify-between">
               <button 
-                type="button"
                 onClick={() => setQuantidade(Math.max(1, quantidade - 1))}
-                className="h-12 w-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+                className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all"
               >
                 <Minus size={20} />
               </button>
-              <span className="text-4xl font-black min-w-[60px] text-center">{quantidade}</span>
+              
+              <div className="text-center">
+                <span className="text-4xl font-black block leading-none">{quantidade}</span>
+                <span className="text-[8px] uppercase font-bold text-slate-500 tracking-tighter">Unidades</span>
+              </div>
+
               <button 
-                type="button"
                 onClick={() => setQuantidade(quantidade + 1)}
-                className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center hover:bg-blue-500 transition-colors"
+                className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center hover:bg-blue-500 shadow-lg shadow-blue-600/30 active:scale-90 transition-all"
               >
                 <Plus size={20} />
               </button>
             </div>
           </div>
 
-          {/* STATUS */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'Aprovado', icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-              { id: 'Defeito', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-              { id: 'Sucata', icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10' }
-            ].map((item) => (
+          {/* STATUS DO LOTE */}
+          <div className="flex gap-2">
+            {['Aprovado', 'Defeito', 'Sucata'].map((s) => (
               <button
-                key={item.id}
-                type="button"
-                onClick={() => setStatus(item.id)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                  status === item.id 
-                    ? `${item.bg} border-white/20 ${item.color} scale-105` 
-                    : 'bg-white/5 border-transparent text-slate-500 opacity-50'
+                key={s}
+                onClick={() => setStatus(s)}
+                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase border transition-all ${
+                  status === s 
+                  ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' 
+                  : 'bg-transparent border-transparent text-slate-600'
                 }`}
               >
-                <item.icon size={20} />
-                <span className="text-[9px] font-black uppercase">{item.id}</span>
+                {s}
               </button>
             ))}
           </div>
@@ -143,15 +189,43 @@ export default function ProducaoEstoquePage() {
           <button 
             onClick={salvarProducao}
             disabled={enviando}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-white text-[#02052b] font-black py-5 rounded-2xl shadow-xl hover:bg-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
           >
-            {enviando ? <Loader2 className="animate-spin" /> : <><Save size={20} /> LANÇAR PRODUÇÃO</>}
+            {enviando ? <Loader2 className="animate-spin" /> : <><Save size={20} /> FINALIZAR LOTE</>}
           </button>
         </div>
 
-        <div className="text-center text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-          Logado como: {user?.email}
+        {/* FEEDBACK DE HISTÓRICO */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-2">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <History size={14} /> Últimos Lançamentos
+            </h4>
+          </div>
+          
+          <div className="space-y-2">
+            {ultimosTestes.length === 0 ? (
+              <p className="text-center py-4 text-[10px] text-slate-600 italic">Nenhum teste registrado hoje.</p>
+            ) : (
+              ultimosTestes.map(t => (
+                <div key={t.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex justify-between items-center animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-1 h-8 rounded-full ${t.status === 'Aprovado' ? 'bg-emerald-500' : t.status === 'Defeito' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-tight text-white">{t.modelo}</p>
+                      <p className="text-[9px] text-slate-500 font-medium">{new Date(t.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-black text-blue-400">x{t.quantidade}</p>
+                    <p className={`text-[8px] font-bold uppercase tracking-tighter ${t.status === 'Aprovado' ? 'text-emerald-500' : 'text-amber-500'}`}>{t.status}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
+
       </div>
     </main>
   )
