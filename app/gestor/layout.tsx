@@ -17,13 +17,14 @@ type MenuItem = {
   roles: Array<'admin' | 'supervisor'>
 }
 
-// Ícone do Recibos EPI alterado para '▤' para manter o padrão visual do menu
+// Menu atualizado com a aba de Estoque para Gestores/Supervisores
 const menuItems: MenuItem[] = [
   { label: 'Painel', href: '/gestor', icon: '⌂', roles: ['admin', 'supervisor'] },
   { label: 'Veículos', href: '/gestor/veiculos', icon: '▣', roles: ['admin', 'supervisor'] },
   { label: 'Revisões', href: '/gestor/revisoes', icon: '🔧', roles: ['admin', 'supervisor'] },
   { label: 'Técnicos', href: '/gestor/tecnicos', icon: '◉', roles: ['admin'] },
   { label: 'Recibos EPI', href: '/gestor/recibos-epi', icon: '▤', roles: ['admin', 'supervisor'] },
+  { label: 'Estoque', href: '/gestor/estoque', icon: '▦', roles: ['admin', 'supervisor'] },
   { label: 'Vínculos', href: '/gestor/vinculos', icon: '⇄', roles: ['admin'] },
   { label: 'Aprovações', href: '/gestor/aprovacoes', icon: '✓', roles: ['admin'] },
   { label: 'Usuários', href: '/gestor/usuarios', icon: '☰', roles: ['admin'] },
@@ -105,6 +106,7 @@ export default function GestorLayout({
 
   return (
     <div className="min-h-screen bg-[#eef2f5] text-[#22313f]">
+      {/* HEADER MOBILE */}
       <div className="lg:hidden border-b border-slate-200 bg-white px-4 py-4 flex items-center justify-between shadow-sm">
         <div>
           <p className="text-[11px] uppercase tracking-[0.25em] text-slate-400">
@@ -122,6 +124,7 @@ export default function GestorLayout({
       </div>
 
       <div className="flex">
+        {/* SIDEBAR */}
         <aside
           className={`
             fixed inset-y-0 left-0 z-40 border-r border-[#1f2a34] bg-[#1f2a34] text-white transition-all duration-300
@@ -162,6 +165,7 @@ export default function GestorLayout({
               </div>
             </div>
 
+            {/* USUÁRIO CONECTADO */}
             {!collapsed && (
               <div className="border-b border-white/10 px-4 py-4">
                 <div className="rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
@@ -178,6 +182,7 @@ export default function GestorLayout({
               </div>
             )}
 
+            {/* NAVEGAÇÃO */}
             <nav className="flex-1 px-3 py-4">
               {!collapsed && (
                 <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
@@ -209,6 +214,7 @@ export default function GestorLayout({
               </div>
             </nav>
 
+            {/* LOGOUT */}
             <div className="mt-auto border-t border-white/10 p-3">
               <button
                 onClick={handleLogout}
@@ -223,6 +229,7 @@ export default function GestorLayout({
           </div>
         </aside>
 
+        {/* OVERLAY MOBILE */}
         {mobileOpen && (
           <div
             className="fixed inset-0 z-30 bg-black/40 lg:hidden"
@@ -230,6 +237,7 @@ export default function GestorLayout({
           />
         )}
 
+        {/* CONTEÚDO PRINCIPAL */}
         <div
           className={`flex-1 transition-all duration-300 ${
             collapsed ? 'lg:ml-24' : 'lg:ml-72'
