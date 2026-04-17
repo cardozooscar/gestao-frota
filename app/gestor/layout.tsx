@@ -106,7 +106,7 @@ export default function GestorLayout({
   return (
     <div className="min-h-screen bg-[#eef2f5] text-[#22313f]">
       {/* HEADER MOBILE */}
-      <div className="lg:hidden border-b border-slate-200 bg-white px-4 py-4 flex items-center justify-between shadow-sm">
+      <div className="lg:hidden border-b border-slate-200 bg-white px-4 py-4 flex items-center justify-between shadow-sm relative z-20">
         <div>
           <p className="text-[11px] uppercase tracking-[0.25em] text-slate-400">Fibranet Brasil</p>
           <h1 className="text-lg font-bold text-slate-800">Gestão de Frota</h1>
@@ -120,17 +120,17 @@ export default function GestorLayout({
       </div>
 
       <div className="flex">
-        {/* SIDEBAR */}
+        {/* SIDEBAR - Com Z-INDEX alto para sobrepor cards de vidro */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-40 border-r border-[#1f2a34] bg-[#1f2a34] text-white transition-all duration-300
+            fixed inset-y-0 left-0 z-[60] border-r border-[#1f2a34] bg-[#1f2a34] text-white transition-all duration-300
             ${collapsed ? 'w-24' : 'w-72'}
-            ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+            ${mobileOpen ? 'translate-x-0 shadow-[0_0_50px_rgba(0,0,0,0.6)]' : '-translate-x-full'}
             lg:translate-x-0
           `}
         >
           <div className="flex h-full flex-col">
-            {/* CABEÇALHO DA SIDEBAR - FIXO NO TOPO */}
+            {/* CABEÇALHO FIXO */}
             <div className="shrink-0 border-b border-white/10 px-4 py-5">
               <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white/10 ring-1 ring-white/10">
@@ -147,7 +147,6 @@ export default function GestorLayout({
                   </div>
                 )}
               </div>
-
               <div className={`mt-4 flex ${collapsed ? 'justify-center' : 'justify-end'}`}>
                 <button
                   onClick={() => setCollapsed(!collapsed)}
@@ -158,7 +157,6 @@ export default function GestorLayout({
               </div>
             </div>
 
-            {/* PERFIL DO USUÁRIO - FIXO */}
             {!collapsed && (
               <div className="shrink-0 border-b border-white/10 px-4 py-4">
                 <div className="rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
@@ -171,14 +169,13 @@ export default function GestorLayout({
               </div>
             )}
 
-            {/* NAVEGAÇÃO - AQUI É ONDE A MÁGICA DO SCROLL ACONTECE */}
+            {/* NAVEGAÇÃO COM SCROLL INTERNO (Resolve problema do Zoom) */}
             <nav className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar">
               {!collapsed && (
                 <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
                   Navegação
                 </p>
               )}
-
               <div className="space-y-1.5">
                 {visibleMenu.map((item) => (
                   <Link
@@ -202,7 +199,7 @@ export default function GestorLayout({
               </div>
             </nav>
 
-            {/* BOTÃO DE LOGOUT - FIXO NO RODAPÉ */}
+            {/* RODAPÉ FIXO */}
             <div className="shrink-0 border-t border-white/10 p-3">
               <button
                 onClick={handleLogout}
@@ -216,10 +213,10 @@ export default function GestorLayout({
           </div>
         </aside>
 
-        {/* OVERLAY MOBILE */}
+        {/* OVERLAY MOBILE - Mais escuro e com blur para "matar" o fundo */}
         {mobileOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            className="fixed inset-0 z-[55] bg-black/70 backdrop-blur-md lg:hidden animate-in fade-in duration-300"
             onClick={() => setMobileOpen(false)}
           />
         )}
@@ -228,7 +225,7 @@ export default function GestorLayout({
         <div
           className={`flex-1 transition-all duration-300 ${
             collapsed ? 'lg:ml-24' : 'lg:ml-72'
-          }`}
+          } ${mobileOpen ? 'blur-[2px] pointer-events-none lg:blur-none' : ''}`}
         >
           <div className="min-h-screen">
             {children}
