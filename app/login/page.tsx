@@ -55,7 +55,8 @@ export default function LoginPage() {
         throw new Error('Usuário desativado. Procure o administrador.')
       }
 
-      if (resolvedUser.role === 'tecnico' && !resolvedUser.approved) {
+      // Adicionamos 'testador' na verificação de aprovação se necessário
+      if ((resolvedUser.role === 'tecnico' || resolvedUser.role === 'testador') && !resolvedUser.approved) {
         throw new Error('Seu cadastro ainda não foi aprovado pelo gestor.')
       }
 
@@ -94,18 +95,22 @@ export default function LoginPage() {
         throw new Error('Usuário desativado.')
       }
 
-      if (profileFinal.role === 'tecnico' && !profileFinal.approved) {
-        await supabase.auth.signOut()
-        throw new Error('Seu cadastro ainda não foi aprovado.')
-      }
-
+      // LÓGICA DE DIRECIONAMENTO POR ROLE
       if (profileFinal.role === 'admin' || profileFinal.role === 'supervisor') {
         router.push('/gestor')
+      } else if (profileFinal.role === 'testador') {
+        router.push('/tecnico/estoque') // NOVO REDIRECIONAMENTO
       } else if (profileFinal.role === 'tecnico') {
+        // Verifica aprovação apenas para quem vai pra rua, ou para ambos
+        if (!profileFinal.approved) {
+          await supabase.auth.signOut()
+          throw new Error('Seu cadastro ainda não foi aprovado.')
+        }
         router.push('/tecnico')
       } else {
-        throw new Error('Perfil inválido.')
+        throw new Error('Perfil inválido ou sem permissão de acesso.')
       }
+
     } catch (err: any) {
       setErro(err?.message || 'Erro ao fazer login.')
     } finally {
@@ -116,7 +121,7 @@ export default function LoginPage() {
   return (
     <main className="relative min-h-screen flex items-center justify-center bg-[#02052b] text-white px-4 overflow-hidden">
       
-      {/* EFEITOS DE LUZ NO FUNDO (BLOBS) */}
+      {/* EFEITOS DE LUZ NO FUNDO */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-600/10 blur-[100px] rounded-full pointer-events-none" />
 
