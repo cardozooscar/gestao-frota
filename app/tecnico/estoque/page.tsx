@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { 
-  Package, CheckCircle2, XCircle, AlertTriangle, 
-  Plus, Minus, Calendar, Save, Loader2, Cpu, History
+  Package, CheckCircle2, AlertTriangle, 
+  Plus, Minus, Save, Loader2, Cpu, History, LogOut
 } from 'lucide-react'
 
 // Atalhos baseados no seu estoque real
@@ -18,6 +19,7 @@ const MODELOS_COMUNS = [
 ]
 
 export default function ProducaoEstoquePage() {
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [enviando, setEnviando] = useState(false)
@@ -84,6 +86,11 @@ export default function ProducaoEstoquePage() {
     setEnviando(false)
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#02052b] flex items-center justify-center">
       <Loader2 className="animate-spin text-blue-500" size={32} />
@@ -94,8 +101,28 @@ export default function ProducaoEstoquePage() {
     <main className="min-h-screen bg-[#02052b] p-4 text-white pb-10">
       <div className="max-w-md mx-auto space-y-6">
         
+        {/* HEADER COM LOGOUT */}
+        <div className="flex items-center justify-between pt-2 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner">
+              <Package size={18} className="text-blue-400" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Fibranet</p>
+              <h1 className="text-sm font-bold text-white leading-tight">Bancada de Testes</h1>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-white hover:bg-red-500 px-3 py-2 rounded-lg transition-all border border-red-500/20 active:scale-95"
+          >
+            Sair <LogOut size={14} />
+          </button>
+        </div>
+
         {/* INDICADOR DE PERFORMANCE DIÁRIA */}
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-900 p-6 rounded-[2rem] shadow-xl shadow-blue-950/50 border border-white/10">
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-900 p-6 rounded-[2rem] shadow-xl shadow-blue-950/50 border border-white/10 mt-2">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200/70 mb-1">Produção do Turno</p>
