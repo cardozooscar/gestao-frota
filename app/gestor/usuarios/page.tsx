@@ -18,7 +18,7 @@ type User = {
   nome: string
   username: string
   email: string
-  role: 'admin' | 'supervisor' | 'tecnico'
+  role: 'admin' | 'supervisor' | 'tecnico' | 'testador'
   approved: boolean
   active: boolean
 }
@@ -235,6 +235,7 @@ export default function UsuariosPage() {
                             <option value="admin">Administrador</option>
                             <option value="supervisor">Supervisor</option>
                             <option value="tecnico">Técnico</option>
+                            <option value="tecnico">Testador</option>
                           </select>
                         </div>
 
