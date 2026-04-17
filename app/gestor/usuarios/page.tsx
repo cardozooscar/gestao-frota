@@ -111,12 +111,14 @@ export default function UsuariosPage() {
   function getRoleBadge(role: string) {
     if (role === 'admin') return 'bg-red-500/20 text-red-400 border border-red-500/30'
     if (role === 'supervisor') return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+    if (role === 'testador') return 'bg-purple-500/20 text-purple-400 border border-purple-500/30' // Cor exclusiva pro Testador
     return 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
   }
 
   function getRoleLabel(role: string) {
     if (role === 'admin') return 'Administrador'
     if (role === 'supervisor') return 'Supervisor'
+    if (role === 'testador') return 'Testador' // Retorno correto do nome
     return 'Técnico'
   }
 
@@ -188,7 +190,8 @@ export default function UsuariosPage() {
                             {user.active ? 'Ativo' : 'Inativo'}
                           </span>
 
-                          {user.role === 'tecnico' && (
+                          {/* Mostra 'Aprovado' ou 'Pendente' tanto para técnico quanto para testador */}
+                          {(user.role === 'tecnico' || user.role === 'testador') && (
                             <span className={`inline-flex rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider border ${user.approved ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-orange-500/20 text-orange-400 border-orange-500/30'}`}>
                               {user.approved ? 'Aprovado' : 'Pendente'}
                             </span>
@@ -235,7 +238,7 @@ export default function UsuariosPage() {
                             <option value="admin">Administrador</option>
                             <option value="supervisor">Supervisor</option>
                             <option value="tecnico">Técnico</option>
-                            <option value="tecnico">Testador</option>
+                            <option value="testador">Testador</option> {/* AGORA O VALOR ESTÁ CORRETO */}
                           </select>
                         </div>
 
@@ -260,13 +263,13 @@ export default function UsuariosPage() {
                         </div>
 
                         {/* Botão de Aprovação (Visível apenas se pendente) */}
-                        {user.role === 'tecnico' && !user.approved && (
+                        {(user.role === 'tecnico' || user.role === 'testador') && !user.approved && (
                           <button
                             onClick={() => updateUser(user.id, 'approved', true)}
                             disabled={salvandoId === user.id}
                             className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50 mt-1"
                           >
-                            <CheckCircle2 size={16} /> Aprovar Técnico
+                            <CheckCircle2 size={16} /> Aprovar Acesso
                           </button>
                         )}
                       </div>
