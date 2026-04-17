@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (action === 'role') {
-      const allowedRoles = ['admin', 'supervisor', 'tecnico']
+      const allowedRoles = ['admin', 'supervisor', 'tecnico', 'testador']
 
       if (!allowedRoles.includes(String(value))) {
         return NextResponse.json({ error: 'Cargo inválido.' }, { status: 400 })
