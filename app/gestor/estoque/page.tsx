@@ -16,6 +16,7 @@ type Producao = {
   quantidade: number
   status: 'Aprovado' | 'Defeito' | 'Sucata'
   serial_number?: string
+  defeito_relatado?: string // Novo campo adicionado ao tipo
   profiles: { nome: string } | null
 }
 
@@ -125,7 +126,8 @@ export default function GestaoEstoquePage() {
         modelo: editando.modelo.toUpperCase(),
         quantidade: editando.quantidade,
         status: editando.status,
-        serial_number: editando.serial_number?.toUpperCase().trim() || null
+        serial_number: editando.serial_number?.toUpperCase().trim() || null,
+        defeito_relatado: editando.defeito_relatado?.trim() || null
       }).eq('id', editando.id)
 
     if (error) alert('Erro ao atualizar: ' + error.message)
@@ -307,7 +309,7 @@ export default function GestaoEstoquePage() {
           </div>
         </div>
 
-        {/* TABELA DE REGISTROS COM S/N */}
+        {/* TABELA DE REGISTROS COM S/N E OBSERVAÇÃO */}
         <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-md">
           <div className="p-5 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
             <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400">Últimos Lançamentos</h3>
@@ -319,6 +321,7 @@ export default function GestaoEstoquePage() {
                   <th className="px-6 py-4">Data</th>
                   <th className="px-6 py-4">Modelo</th>
                   <th className="px-6 py-4">S/N</th>
+                  <th className="px-6 py-4">Obs / Defeito</th>
                   <th className="px-6 py-4 text-center">Qtd</th>
                   <th className="px-6 py-4">Técnico</th>
                   <th className="px-6 py-4">Status</th>
@@ -328,19 +331,22 @@ export default function GestaoEstoquePage() {
               <tbody className="divide-y divide-white/5">
                 {dadosFiltrados.slice(0, 50).map((item) => (
                   <tr key={item.id} className="hover:bg-white/[0.03] transition-colors group">
-                    <td className="px-6 py-4 text-slate-400">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-slate-400 whitespace-nowrap">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
                     <td className="px-6 py-4 font-bold uppercase whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Cpu size={14} className="text-[#2f6eea]" /> {item.modelo}
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-[11px] font-bold text-[#8fe6ff] tracking-wide">
+                    <td className="px-6 py-4 font-mono text-[11px] font-bold text-[#8fe6ff] tracking-wide whitespace-nowrap">
                       {item.serial_number || '---'}
                     </td>
+                    <td className="px-6 py-4 text-xs text-slate-400 max-w-[150px] truncate" title={item.defeito_relatado || ''}>
+                      {item.defeito_relatado || '---'}
+                    </td>
                     <td className="px-6 py-4 text-center font-black text-[#2f6eea] text-base">{item.quantidade}</td>
-                    <td className="px-6 py-4 text-slate-300">{item.profiles?.nome}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border tracking-widest whitespace-nowrap ${
+                    <td className="px-6 py-4 text-slate-300 whitespace-nowrap">{item.profiles?.nome}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border tracking-widest ${
                         item.status === 'Aprovado' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
                         item.status === 'Defeito' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
                       }`}>{item.status}</span>
@@ -362,8 +368,8 @@ export default function GestaoEstoquePage() {
 
       {/* MODAL DE EDIÇÃO */}
       {editando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#070b3f] w-full max-w-sm rounded-3xl border border-white/10 p-6 space-y-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#070b3f] w-full max-w-sm rounded-3xl border border-white/10 p-6 space-y-6 shadow-2xl my-auto">
             <div className="flex justify-between items-center">
               <h3 className="font-black uppercase tracking-widest text-sm">Editar Registro</h3>
               <button onClick={() => setEditando(null)} className="text-slate-500 hover:text-white"><X size={20} /></button>
@@ -376,6 +382,10 @@ export default function GestaoEstoquePage() {
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Serial Number (S/N)</label>
                 <input type="text" value={editando.serial_number || ''} onChange={(e) => setEditando({...editando, serial_number: e.target.value})} placeholder="Vazio" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] uppercase font-mono" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Obs / Defeito</label>
+                <input type="text" value={editando.defeito_relatado || ''} onChange={(e) => setEditando({...editando, defeito_relatado: e.target.value})} placeholder="Sem observação" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-normal" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
