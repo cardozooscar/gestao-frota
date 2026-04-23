@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import Tesseract from 'tesseract.js'
 import { 
   Package, CheckCircle2, AlertTriangle, 
-  Plus, Minus, Save, Loader2, Cpu, History, LogOut
+  Plus, Minus, Save, Loader2, Cpu, History, LogOut, Camera, Barcode
 } from 'lucide-react'
 
 // Atalhos baseados no seu estoque real
@@ -27,6 +28,9 @@ export default function ProducaoEstoquePage() {
   const [modelo, setModelo] = useState('')
   const [quantidade, setQuantidade] = useState(1)
   const [status, setStatus] = useState('Aprovado')
+  const [sn, setSn] = useState('')
+  const [processandoOCR, setProcessandoOCR] = useState(false)
+  
   const [meuTotalHoje, setMeuTotalHoje] = useState(0)
   const [ultimosTestes, setUltimosTestes] = useState<any[]>([])
 
@@ -64,6 +68,24 @@ export default function ProducaoEstoquePage() {
     if (lista) setUltimosTestes(lista)
   }
 
+  // Função OCR para ler a etiqueta
+  async function handleCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setProcessandoOCR(true)
+    try {
+      const { data: { text } } = await Tesseract.recognize(file, 'eng')
+      // Limpeza: remove espaços e caracteres especiais, deixando só letras e números
+      const snLimpo = text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+      setSn(snLimpo)
+    } catch (error) {
+      alert("Erro ao ler a etiqueta da foto. Por favor, tente digitar manualmente.")
+    } finally {
+      setProcessandoOCR(false)
+    }
+  }
+
   async function salvarProducao() {
     if (!modelo) return alert('Selecione ou digite o modelo!')
     setEnviando(true)
@@ -72,6 +94,7 @@ export default function ProducaoEstoquePage() {
       modelo: modelo.toUpperCase().trim(),
       quantidade: quantidade,
       status: status,
+      serial_number: sn.trim() || null, // Salva o SN ou deixa vazio
       tecnico_id: user.id,
       data_referencia: dataHojeStr
     }])
@@ -81,6 +104,7 @@ export default function ProducaoEstoquePage() {
     } else {
       setModelo('')
       setQuantidade(1)
+      setSn('') // Limpa o campo do SN para o próximo
       fetchMeuProgresso(user.id)
     }
     setEnviando(false)
@@ -172,8 +196,30 @@ export default function ProducaoEstoquePage() {
             </div>
           </div>
 
+          {/* CÂMERA / SERIAL NUMBER (NOVO) */}
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Serial Number (SN)</label>
+            <div className="relative">
+              <div className="absolute left-4 top-[18px] text-slate-500">
+                <Barcode size={16} />
+              </div>
+              <input 
+                type="text" 
+                value={sn}
+                onChange={(e) => setSn(e.target.value.toUpperCase())}
+                placeholder={processandoOCR ? "LENDO ETIQUETA..." : "DIGITE OU FOTOGRAFE..."}
+                className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-4 pl-12 pr-16 text-xs font-bold focus:border-blue-500 outline-none uppercase transition-all"
+              />
+              <label className="absolute right-2 top-2 bottom-2 w-12 bg-blue-600 hover:bg-blue-500 rounded-xl flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-md shadow-blue-900/40">
+                {processandoOCR ? <Loader2 className="animate-spin text-white" size={18} /> : <Camera className="text-white" size={18} />}
+                {/* capture="environment" força a abrir a câmera traseira do celular */}
+                <input type="file" accept="image/*" capture="environment" onChange={handleCapture} className="hidden" disabled={processandoOCR} />
+              </label>
+            </div>
+          </div>
+
           {/* AJUSTE DE QUANTIDADE */}
-          <div className="bg-black/40 rounded-3xl p-2 border border-white/5">
+          <div className="bg-black/40 rounded-3xl p-2 border border-white/5 mt-4">
             <div className="flex items-center justify-between">
               <button 
                 onClick={() => setQuantidade(Math.max(1, quantidade - 1))}
@@ -215,8 +261,8 @@ export default function ProducaoEstoquePage() {
 
           <button 
             onClick={salvarProducao}
-            disabled={enviando}
-            className="w-full bg-white text-[#02052b] font-black py-5 rounded-2xl shadow-xl hover:bg-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+            disabled={enviando || processandoOCR}
+            className="w-full bg-white text-[#02052b] font-black py-5 rounded-2xl shadow-xl hover:bg-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
           >
             {enviando ? <Loader2 className="animate-spin" /> : <><Save size={20} /> FINALIZAR LOTE</>}
           </button>
@@ -237,10 +283,14 @@ export default function ProducaoEstoquePage() {
               ultimosTestes.map(t => (
                 <div key={t.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex justify-between items-center animate-in fade-in slide-in-from-bottom-2">
                   <div className="flex items-center gap-3">
-                    <div className={`w-1 h-8 rounded-full ${t.status === 'Aprovado' ? 'bg-emerald-500' : t.status === 'Defeito' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                    <div className={`w-1 h-full min-h-[32px] rounded-full ${t.status === 'Aprovado' ? 'bg-emerald-500' : t.status === 'Defeito' ? 'bg-amber-500' : 'bg-red-500'}`} />
                     <div>
                       <p className="text-xs font-black uppercase tracking-tight text-white">{t.modelo}</p>
-                      <p className="text-[9px] text-slate-500 font-medium">{new Date(t.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                      {/* Exibe o SN no histórico se ele existir */}
+                      {t.serial_number && (
+                        <p className="text-[9px] font-mono text-blue-400 font-bold mt-0.5">SN: {t.serial_number}</p>
+                      )}
+                      <p className="text-[9px] text-slate-500 font-medium mt-0.5">{new Date(t.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                   </div>
                   <div className="text-right">

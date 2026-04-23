@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { 
   Package, CheckCircle2, AlertTriangle, TrendingUp, 
   Search, Cpu, Pencil, Trash2, X, Save, Loader2,
-  CalendarDays, Trophy, BarChart3, Activity
+  CalendarDays, Trophy, BarChart3, Activity, Barcode
 } from 'lucide-react'
 
 type Producao = {
@@ -15,13 +15,17 @@ type Producao = {
   modelo: string
   quantidade: number
   status: 'Aprovado' | 'Defeito' | 'Sucata'
+  serial_number?: string
   profiles: { nome: string } | null
 }
 
 export default function GestaoEstoquePage() {
   const [dados, setDados] = useState<Producao[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Filtros
   const [filtroModelo, setFiltroModelo] = useState('')
+  const [buscaSN, setBuscaSN] = useState('')
   
   // Estados para Edição
   const [editando, setEditando] = useState<Producao | null>(null)
@@ -51,18 +55,15 @@ export default function GestaoEstoquePage() {
      LÓGICA DE DADOS PARA OS GRÁFICOS E RESUMOS
      ========================================== */
 
-  // 1. Resumo Geral
   const totalAprovados = dados.filter(d => d.status === 'Aprovado').reduce((acc, curr) => acc + curr.quantidade, 0)
   const totalDefeito = dados.filter(d => d.status !== 'Aprovado').reduce((acc, curr) => acc + curr.quantidade, 0)
   const totalGeral = dados.reduce((acc, curr) => acc + curr.quantidade, 0)
 
-  // 2. Calendário Mensal (Produtividade por Dia)
   const prodPorDia = useMemo(() => {
     const mapa: Record<number, number> = {}
     dados.forEach(d => {
-      // Usa data_referencia se existir, senão usa created_at
       const dateString = d.data_referencia || d.created_at.split('T')[0]
-      const dateObj = new Date(dateString + 'T12:00:00Z') // Força meio-dia para evitar fuso horário
+      const dateObj = new Date(dateString + 'T12:00:00Z') 
       
       if (dateObj.getMonth() === mesAtual && dateObj.getFullYear() === anoAtual) {
         const dia = dateObj.getDate()
@@ -77,12 +78,11 @@ export default function GestaoEstoquePage() {
 
   function getCorCalendario(qtd: number) {
     if (!qtd || qtd === 0) return 'bg-white/5 text-slate-600 border-white/5'
-    if (qtd < 6) return 'bg-blue-900/40 text-blue-300 border-blue-800/50' // BAIXO
-    if (qtd <= 11) return 'bg-[#2f6eea] text-white border-[#2f6eea] shadow-lg shadow-blue-500/20' // MÉDIO
-    return 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] font-black' // ALTO
+    if (qtd < 6) return 'bg-blue-900/40 text-blue-300 border-blue-800/50'
+    if (qtd <= 11) return 'bg-[#2f6eea] text-white border-[#2f6eea] shadow-lg shadow-blue-500/20'
+    return 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] font-black'
   }
 
-  // 3. Top Equipamentos Aprovados
   const topModelos = useMemo(() => {
     const aprovados = dados.filter(d => d.status === 'Aprovado')
     const contagem: Record<string, number> = {}
@@ -92,10 +92,9 @@ export default function GestaoEstoquePage() {
     return Object.entries(contagem)
       .map(([modelo, qtd]) => ({ modelo, qtd }))
       .sort((a, b) => b.qtd - a.qtd)
-      .slice(0, 5) // Pega os 5 primeiros
+      .slice(0, 5)
   }, [dados])
 
-  // 4. Gráficos dos Últimos 7 Dias
   const ultimos7Dias = useMemo(() => {
     const dias = []
     for(let i=6; i>=0; i--) {
@@ -125,7 +124,8 @@ export default function GestaoEstoquePage() {
     const { error } = await supabase.from('estoque_producao_diaria').update({
         modelo: editando.modelo.toUpperCase(),
         quantidade: editando.quantidade,
-        status: editando.status
+        status: editando.status,
+        serial_number: editando.serial_number?.toUpperCase().trim() || null
       }).eq('id', editando.id)
 
     if (error) alert('Erro ao atualizar: ' + error.message)
@@ -140,7 +140,12 @@ export default function GestaoEstoquePage() {
     else fetchProducao()
   }
 
-  const dadosFiltrados = dados.filter(d => d.modelo.toLowerCase().includes(filtroModelo.toLowerCase()))
+  // Filtragem combinada (Modelo e S/N)
+  const dadosFiltrados = dados.filter(d => {
+    const matchModelo = d.modelo.toLowerCase().includes(filtroModelo.toLowerCase())
+    const matchSN = buscaSN === '' || (d.serial_number && d.serial_number.toLowerCase().includes(buscaSN.toLowerCase()))
+    return matchModelo && matchSN
+  })
 
   if (loading) return <div className="min-h-screen bg-[#02052b] flex items-center justify-center text-blue-500"><Loader2 className="animate-spin" size={40} /></div>
 
@@ -148,17 +153,36 @@ export default function GestaoEstoquePage() {
     <main className="min-h-screen bg-[#02052b] p-4 lg:p-8 text-white pb-20">
       <div className="mx-auto max-w-7xl space-y-6">
         
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* HEADER COM BUSCA DUPLA */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
               <TrendingUp size={14} /> Logística Inteligente
             </div>
             <h1 className="text-3xl font-black tracking-tight">Dashboard de Reuso</h1>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-            <input type="text" placeholder="Buscar modelo..." value={filtroModelo} onChange={(e) => setFiltroModelo(e.target.value)} className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full md:w-64 transition-all" />
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Buscar modelo..." 
+                value={filtroModelo} 
+                onChange={(e) => setFiltroModelo(e.target.value)} 
+                className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full sm:w-48 transition-all" 
+              />
+            </div>
+            <div className="relative">
+              <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <input 
+                type="text" 
+                placeholder="Buscar S/N..." 
+                value={buscaSN} 
+                onChange={(e) => setBuscaSN(e.target.value)} 
+                className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full sm:w-56 transition-all uppercase" 
+              />
+            </div>
           </div>
         </div>
 
@@ -178,7 +202,7 @@ export default function GestaoEstoquePage() {
           </div>
         </div>
 
-        {/* NOVA ÁREA DE INTELIGÊNCIA: GRID PRINCIPAL */}
+        {/* ÁREA DE INTELIGÊNCIA: GRID PRINCIPAL */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           
           {/* CALENDÁRIO TÉRMICO */}
@@ -283,7 +307,7 @@ export default function GestaoEstoquePage() {
           </div>
         </div>
 
-        {/* TABELA DE REGISTROS (MANTIDA) */}
+        {/* TABELA DE REGISTROS COM S/N */}
         <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-md">
           <div className="p-5 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
             <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400">Últimos Lançamentos</h3>
@@ -294,6 +318,7 @@ export default function GestaoEstoquePage() {
                 <tr className="bg-white/5 text-[10px] uppercase text-slate-500 font-black tracking-widest">
                   <th className="px-6 py-4">Data</th>
                   <th className="px-6 py-4">Modelo</th>
+                  <th className="px-6 py-4">S/N</th>
                   <th className="px-6 py-4 text-center">Qtd</th>
                   <th className="px-6 py-4">Técnico</th>
                   <th className="px-6 py-4">Status</th>
@@ -301,16 +326,21 @@ export default function GestaoEstoquePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {dadosFiltrados.slice(0, 50).map((item) => ( // Mostra os 50 últimos para não pesar a tabela
+                {dadosFiltrados.slice(0, 50).map((item) => (
                   <tr key={item.id} className="hover:bg-white/[0.03] transition-colors group">
                     <td className="px-6 py-4 text-slate-400">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
-                    <td className="px-6 py-4 font-bold uppercase flex items-center gap-2">
-                      <Cpu size={14} className="text-[#2f6eea]" /> {item.modelo}
+                    <td className="px-6 py-4 font-bold uppercase whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Cpu size={14} className="text-[#2f6eea]" /> {item.modelo}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-[11px] font-bold text-[#8fe6ff] tracking-wide">
+                      {item.serial_number || '---'}
                     </td>
                     <td className="px-6 py-4 text-center font-black text-[#2f6eea] text-base">{item.quantidade}</td>
                     <td className="px-6 py-4 text-slate-300">{item.profiles?.nome}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border tracking-widest ${
+                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border tracking-widest whitespace-nowrap ${
                         item.status === 'Aprovado' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
                         item.status === 'Defeito' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
                       }`}>{item.status}</span>
@@ -344,16 +374,22 @@ export default function GestaoEstoquePage() {
                 <input type="text" value={editando.modelo} onChange={(e) => setEditando({...editando, modelo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] uppercase font-bold" />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Quantidade</label>
-                <input type="number" value={editando.quantidade} onChange={(e) => setEditando({...editando, quantidade: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-black" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Serial Number (S/N)</label>
+                <input type="text" value={editando.serial_number || ''} onChange={(e) => setEditando({...editando, serial_number: e.target.value})} placeholder="Vazio" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] uppercase font-mono" />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Status</label>
-                <select value={editando.status} onChange={(e) => setEditando({...editando, status: e.target.value as any})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-bold">
-                  <option value="Aprovado">Aprovado</option>
-                  <option value="Defeito">Defeito</option>
-                  <option value="Sucata">Sucata</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd.</label>
+                  <input type="number" value={editando.quantidade} onChange={(e) => setEditando({...editando, quantidade: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-black" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Status</label>
+                  <select value={editando.status} onChange={(e) => setEditando({...editando, status: e.target.value as any})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-bold">
+                    <option value="Aprovado">Aprovado</option>
+                    <option value="Defeito">Defeito</option>
+                    <option value="Sucata">Sucata</option>
+                  </select>
+                </div>
               </div>
             </div>
             <button onClick={handleUpdate} disabled={salvando} className="w-full bg-[#2f6eea] hover:bg-blue-600 py-4 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
