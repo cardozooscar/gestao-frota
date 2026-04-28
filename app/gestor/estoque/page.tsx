@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { 
   Package, CheckCircle2, AlertTriangle, TrendingUp, 
   Search, Cpu, Pencil, Trash2, X, Save, Loader2,
-  CalendarDays, Trophy, BarChart3, Activity, Barcode
+  CalendarDays, Trophy, BarChart3, Activity, Barcode, Target, User
 } from 'lucide-react'
 
 type Producao = {
@@ -16,8 +16,9 @@ type Producao = {
   quantidade: number
   status: 'Aprovado' | 'Defeito' | 'Sucata'
   serial_number?: string
-  defeito_relatado?: string // Novo campo adicionado ao tipo
-  profiles: { nome: string } | null
+  defeito_relatado?: string
+  tecnico_id: string
+  profiles: { nome: string; meta_diaria?: number } | null
 }
 
 export default function GestaoEstoquePage() {
@@ -34,6 +35,7 @@ export default function GestaoEstoquePage() {
 
   // Datas Base
   const hoje = new Date()
+  const dataHojeStr = hoje.toISOString().split('T')[0]
   const mesAtual = hoje.getMonth()
   const anoAtual = hoje.getFullYear()
 
@@ -45,7 +47,7 @@ export default function GestaoEstoquePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('estoque_producao_diaria')
-      .select('*, profiles:tecnico_id(nome)')
+      .select('*, profiles:tecnico_id(nome, meta_diaria)') // Buscando a meta do perfil
       .order('created_at', { ascending: false })
 
     if (data) setDados(data as Producao[])
@@ -53,9 +55,30 @@ export default function GestaoEstoquePage() {
   }
 
   /* ==========================================
-     LÓGICA DE DADOS PARA OS GRÁFICOS E RESUMOS
+     LÓGICA DE ACOMPANHAMENTO DE METAS (HOJE)
      ========================================== */
+  const resumoMetasHoje = useMemo(() => {
+    const recordsHoje = dados.filter(d => (d.data_referencia || d.created_at.split('T')[0]) === dataHojeStr)
+    const progresso: Record<string, { nome: string; total: number; meta: number }> = {}
 
+    recordsHoje.forEach(r => {
+      const id = r.tecnico_id
+      if (!progresso[id]) {
+        progresso[id] = { 
+          nome: r.profiles?.nome || 'Desconhecido', 
+          total: 0, 
+          meta: r.profiles?.meta_diaria || 30 
+        }
+      }
+      progresso[id].total += r.quantidade
+    })
+
+    return Object.values(progresso)
+  }, [dados, dataHojeStr])
+
+  /* ==========================================
+     OUTRAS LÓGICAS (GRÁFICOS E CALENDÁRIO)
+     ========================================== */
   const totalAprovados = dados.filter(d => d.status === 'Aprovado').reduce((acc, curr) => acc + curr.quantidade, 0)
   const totalDefeito = dados.filter(d => d.status !== 'Aprovado').reduce((acc, curr) => acc + curr.quantidade, 0)
   const totalGeral = dados.reduce((acc, curr) => acc + curr.quantidade, 0)
@@ -65,7 +88,6 @@ export default function GestaoEstoquePage() {
     dados.forEach(d => {
       const dateString = d.data_referencia || d.created_at.split('T')[0]
       const dateObj = new Date(dateString + 'T12:00:00Z') 
-      
       if (dateObj.getMonth() === mesAtual && dateObj.getFullYear() === anoAtual) {
         const dia = dateObj.getDate()
         mapa[dia] = (mapa[dia] || 0) + d.quantidade
@@ -80,45 +102,21 @@ export default function GestaoEstoquePage() {
   function getCorCalendario(qtd: number) {
     if (!qtd || qtd === 0) return 'bg-white/5 text-slate-600 border-white/5'
     if (qtd < 6) return 'bg-blue-900/40 text-blue-300 border-blue-800/50'
-    if (qtd <= 11) return 'bg-[#2f6eea] text-white border-[#2f6eea] shadow-lg shadow-blue-500/20'
-    return 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] font-black'
+    if (qtd <= 11) return 'bg-[#2f6eea] text-white border-[#2f6eea]'
+    return 'bg-emerald-500 text-white border-emerald-400 font-black'
   }
 
   const topModelos = useMemo(() => {
-    const aprovados = dados.filter(d => d.status === 'Aprovado')
     const contagem: Record<string, number> = {}
-    aprovados.forEach(d => {
+    dados.filter(d => d.status === 'Aprovado').forEach(d => {
       contagem[d.modelo] = (contagem[d.modelo] || 0) + d.quantidade
     })
-    return Object.entries(contagem)
-      .map(([modelo, qtd]) => ({ modelo, qtd }))
-      .sort((a, b) => b.qtd - a.qtd)
-      .slice(0, 5)
+    return Object.entries(contagem).map(([modelo, qtd]) => ({ modelo, qtd })).sort((a, b) => b.qtd - a.qtd).slice(0, 5)
   }, [dados])
-
-  const ultimos7Dias = useMemo(() => {
-    const dias = []
-    for(let i=6; i>=0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      dias.push(d)
-    }
-    return dias.map(dataObj => {
-      const iso = dataObj.toISOString().split('T')[0]
-      const records = dados.filter(d => (d.data_referencia || d.created_at.split('T')[0]) === iso)
-      const aprovados = records.filter(r => r.status === 'Aprovado').reduce((a, b) => a + b.quantidade, 0)
-      const ruins = records.filter(r => r.status !== 'Aprovado').reduce((a, b) => a + b.quantidade, 0)
-      return { label: dataObj.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase(), aprovados, ruins }
-    })
-  }, [dados])
-
-  const maxAprovados = Math.max(...ultimos7Dias.map(d => d.aprovados), 1)
-  const maxRuins = Math.max(...ultimos7Dias.map(d => d.ruins), 1)
 
   /* ==========================================
-     FUNÇÕES DE AÇÃO (EDITAR / EXCLUIR)
+     AÇÕES
      ========================================== */
-
   async function handleUpdate() {
     if (!editando) return
     setSalvando(true)
@@ -129,282 +127,196 @@ export default function GestaoEstoquePage() {
         serial_number: editando.serial_number?.toUpperCase().trim() || null,
         defeito_relatado: editando.defeito_relatado?.trim() || null
       }).eq('id', editando.id)
-
-    if (error) alert('Erro ao atualizar: ' + error.message)
-    else { setEditando(null); fetchProducao() }
+    if (!error) { setEditando(null); fetchProducao() }
     setSalvando(false)
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Tem certeza que deseja excluir este registro permanentemente?')) return
-    const { error } = await supabase.from('estoque_producao_diaria').delete().eq('id', id)
-    if (error) alert('Erro ao excluir: ' + error.message)
-    else fetchProducao()
+    if (confirm('Excluir permanentemente?')) {
+      await supabase.from('estoque_producao_diaria').delete().eq('id', id)
+      fetchProducao()
+    }
   }
 
-  // Filtragem combinada (Modelo e S/N)
   const dadosFiltrados = dados.filter(d => {
     const matchModelo = d.modelo.toLowerCase().includes(filtroModelo.toLowerCase())
     const matchSN = buscaSN === '' || (d.serial_number && d.serial_number.toLowerCase().includes(buscaSN.toLowerCase()))
     return matchModelo && matchSN
   })
 
-  if (loading) return <div className="min-h-screen bg-[#02052b] flex items-center justify-center text-blue-500"><Loader2 className="animate-spin" size={40} /></div>
+  if (loading) return <div className="min-h-screen bg-[#02052b] flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={40} /></div>
 
   return (
     <main className="min-h-screen bg-[#02052b] p-4 lg:p-8 text-white pb-20">
       <div className="mx-auto max-w-7xl space-y-6">
         
-        {/* HEADER COM BUSCA DUPLA */}
+        {/* HEADER */}
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]">
-              <TrendingUp size={14} /> Logística Inteligente
-            </div>
+            <div className="flex items-center gap-2 text-blue-400 font-bold uppercase text-[10px] tracking-[0.3em]"><TrendingUp size={14} /> Logística Inteligente</div>
             <h1 className="text-3xl font-black tracking-tight">Dashboard de Reuso</h1>
           </div>
-          
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input 
-                type="text" 
-                placeholder="Buscar modelo..." 
-                value={filtroModelo} 
-                onChange={(e) => setFiltroModelo(e.target.value)} 
-                className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full sm:w-48 transition-all" 
-              />
+              <input type="text" placeholder="Modelo..." value={filtroModelo} onChange={(e) => setFiltroModelo(e.target.value)} className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full sm:w-48" />
             </div>
             <div className="relative">
               <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-              <input 
-                type="text" 
-                placeholder="Buscar S/N..." 
-                value={buscaSN} 
-                onChange={(e) => setBuscaSN(e.target.value)} 
-                className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full sm:w-56 transition-all uppercase" 
-              />
+              <input type="text" placeholder="S/N..." value={buscaSN} onChange={(e) => setBuscaSN(e.target.value)} className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm focus:border-[#2f6eea] outline-none w-full sm:w-56 uppercase" />
             </div>
           </div>
         </div>
 
         {/* CARDS GLOBAIS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md flex items-center gap-4">
+          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400"><CheckCircle2 size={24} /></div>
-            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Aprovados (Total)</p><h2 className="text-3xl font-black">{totalAprovados}</h2></div>
+            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Aprovados</p><h2 className="text-3xl font-black">{totalAprovados}</h2></div>
           </div>
-          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md flex items-center gap-4">
+          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400"><AlertTriangle size={24} /></div>
-            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Defeito / Sucata</p><h2 className="text-3xl font-black">{totalDefeito}</h2></div>
+            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Defeitos</p><h2 className="text-3xl font-black">{totalDefeito}</h2></div>
           </div>
-          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md flex items-center gap-4">
+          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400"><Package size={24} /></div>
-            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Volume Total Testado</p><h2 className="text-3xl font-black">{totalGeral}</h2></div>
+            <div><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Testado</p><h2 className="text-3xl font-black">{totalGeral}</h2></div>
           </div>
         </div>
 
-        {/* ÁREA DE INTELIGÊNCIA: GRID PRINCIPAL */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* NOVA SEÇÃO: ACOMPANHAMENTO DE METAS (HOJE) */}
+        <div className="bg-gradient-to-br from-[#070b3f] to-[#02052b] border border-blue-500/10 p-6 rounded-[2.5rem] shadow-2xl">
+          <div className="flex items-center gap-2 mb-6">
+            <Target size={20} className="text-blue-400" />
+            <h3 className="font-black text-sm uppercase tracking-widest">Painel de Metas da Equipe (Hoje)</h3>
+          </div>
           
-          {/* CALENDÁRIO TÉRMICO */}
-          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md lg:col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm flex items-center gap-2"><CalendarDays size={18} className="text-[#2f6eea]" /> Produtividade Diária</h3>
-              <span className="text-[10px] font-black text-slate-500 uppercase">{hoje.toLocaleString('pt-BR', { month: 'long' })}</span>
-            </div>
-            
-            <div className="grid grid-cols-7 gap-1.5 text-center mb-2">
-              {['D','S','T','Q','Q','S','S'].map((d, i) => <div key={i} className="text-[10px] font-bold text-slate-500">{d}</div>)}
-            </div>
-            
-            <div className="grid grid-cols-7 gap-1.5">
-              {Array.from({length: primeiroDiaDoMes}).map((_, i) => <div key={`empty-${i}`} />)}
-              {Array.from({length: diasNoMes}).map((_, i) => {
-                const dia = i + 1;
-                const qtd = prodPorDia[dia] || 0;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {resumoMetasHoje.length === 0 ? (
+              <p className="text-xs text-slate-500 italic py-4">Nenhum técnico iniciou os testes hoje.</p>
+            ) : (
+              resumoMetasHoje.map((tech) => {
+                const percent = Math.min(Math.round((tech.total / tech.meta) * 100), 100)
+                const concluido = tech.total >= tech.meta
                 return (
-                  <div key={dia} title={`${qtd} testados`} className={`aspect-square rounded-lg flex items-center justify-center border transition-all hover:scale-110 cursor-help ${getCorCalendario(qtd)}`}>
-                    <span className="text-[10px] font-bold">{dia}</span>
+                  <div key={tech.nome} className="bg-white/5 border border-white/5 p-5 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center border ${concluido ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
+                          <User size={16} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-white flex items-center gap-2">
+                            {tech.nome} {concluido && <Trophy size={14} className="text-yellow-500" />}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Bancada de Testes</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-black text-white">{tech.total}</span>
+                        <span className="text-xs font-bold text-slate-500">/{tech.meta}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
+                        <span className={concluido ? 'text-emerald-400' : 'text-slate-500'}>{concluido ? 'Meta Batida' : 'Em andamento'}</span>
+                        <span>{percent}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
+                        <div className={`h-full transition-all duration-1000 ${concluido ? 'bg-emerald-500' : 'bg-blue-600'}`} style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
                   </div>
                 )
-              })}
-            </div>
-
-            {/* Legenda */}
-            <div className="mt-5 flex items-center justify-center gap-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-blue-900/40 border border-blue-800/50"/> Baixo</div>
-              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-[#2f6eea]"/> Médio</div>
-              <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-emerald-500"/> Alto</div>
-            </div>
-          </div>
-
-          {/* GRÁFICOS DE BARRAS (ÚLTIMOS 7 DIAS) */}
-          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md lg:col-span-2 flex flex-col justify-between">
-            <div className="flex items-center gap-2 mb-6">
-              <BarChart3 size={18} className="text-[#2f6eea]" />
-              <h3 className="font-bold text-sm">Desempenho da Semana (Últimos 7 dias)</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
-              {/* Gráfico Bons */}
-              <div className="flex flex-col h-full">
-                <p className="text-[10px] font-black uppercase text-emerald-400 mb-2 tracking-widest">Equipamentos Aprovados</p>
-                <div className="flex items-end h-32 gap-2 mt-auto">
-                  {ultimos7Dias.map((dia, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
-                      <div className="w-full bg-emerald-500/10 rounded-t-md relative flex items-end h-full">
-                        <div className="w-full bg-emerald-500 rounded-t-md transition-all duration-1000" style={{ height: `${(dia.aprovados / maxAprovados) * 100}%` }}>
-                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 text-[10px] font-bold text-emerald-300 transition-opacity">{dia.aprovados}</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold text-slate-500">{dia.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Gráfico Ruins */}
-              <div className="flex flex-col h-full">
-                <p className="text-[10px] font-black uppercase text-red-400 mb-2 tracking-widest">Defeitos & Sucatas</p>
-                <div className="flex items-end h-32 gap-2 mt-auto">
-                  {ultimos7Dias.map((dia, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
-                      <div className="w-full bg-red-500/10 rounded-t-md relative flex items-end h-full">
-                        <div className="w-full bg-red-500 rounded-t-md transition-all duration-1000" style={{ height: `${(dia.ruins / maxRuins) * 100}%` }}>
-                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 text-[10px] font-bold text-red-300 transition-opacity">{dia.ruins}</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold text-slate-500">{dia.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* TOP EQUIPAMENTOS APROVADOS */}
-          <div className="bg-gradient-to-br from-[#070b3f] to-[#02052b] border border-white/10 p-6 rounded-3xl backdrop-blur-md lg:col-span-3">
-            <div className="flex items-center gap-2 mb-4">
-              <Trophy size={18} className="text-yellow-500" />
-              <h3 className="font-bold text-sm">Top 5 Modelos Mais Aprovados</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {topModelos.length === 0 ? (
-                <p className="text-sm text-slate-500 col-span-5 text-center py-4">Nenhum equipamento aprovado ainda.</p>
-              ) : (
-                topModelos.map((item, index) => (
-                  <div key={item.modelo} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex flex-col justify-between hover:bg-white/10 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] font-black text-slate-500">#{index + 1}</span>
-                      <Activity size={14} className="text-[#2f6eea]" />
-                    </div>
-                    <p className="font-black uppercase text-sm truncate" title={item.modelo}>{item.modelo}</p>
-                    <p className="text-xl font-black text-emerald-400 mt-1">{item.qtd} <span className="text-[9px] text-slate-500">unid.</span></p>
-                  </div>
-                ))
-              )}
-            </div>
+              })
+            )}
           </div>
         </div>
 
-        {/* TABELA DE REGISTROS COM S/N E OBSERVAÇÃO */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-md">
-          <div className="p-5 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
-            <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400">Últimos Lançamentos</h3>
+        {/* GRID COM GRÁFICOS E CALENDÁRIO (REDUZIDO PARA DAR ESPAÇO) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl lg:col-span-1">
+            <h3 className="font-bold text-sm mb-4 flex items-center gap-2"><CalendarDays size={18} className="text-[#2f6eea]" /> Produtividade</h3>
+            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+              {['D','S','T','Q','Q','S','S'].map((d, i) => <div key={i} className="text-[10px] font-bold text-slate-500">{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({length: primeiroDiaDoMes}).map((_, i) => <div key={i} />)}
+              {Array.from({length: diasNoMes}).map((_, i) => (
+                <div key={i} className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-bold border ${getCorCalendario(prodPorDia[i+1] || 0)}`}>{i+1}</div>
+              ))}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-white/5 text-[10px] uppercase text-slate-500 font-black tracking-widest">
-                  <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Modelo</th>
-                  <th className="px-6 py-4">S/N</th>
-                  <th className="px-6 py-4">Obs / Defeito</th>
-                  <th className="px-6 py-4 text-center">Qtd</th>
-                  <th className="px-6 py-4">Técnico</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {dadosFiltrados.slice(0, 50).map((item) => (
-                  <tr key={item.id} className="hover:bg-white/[0.03] transition-colors group">
-                    <td className="px-6 py-4 text-slate-400 whitespace-nowrap">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
-                    <td className="px-6 py-4 font-bold uppercase whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Cpu size={14} className="text-[#2f6eea]" /> {item.modelo}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-[11px] font-bold text-[#8fe6ff] tracking-wide whitespace-nowrap">
-                      {item.serial_number || '---'}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-400 max-w-[150px] truncate" title={item.defeito_relatado || ''}>
-                      {item.defeito_relatado || '---'}
-                    </td>
-                    <td className="px-6 py-4 text-center font-black text-[#2f6eea] text-base">{item.quantidade}</td>
-                    <td className="px-6 py-4 text-slate-300 whitespace-nowrap">{item.profiles?.nome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border tracking-widest ${
-                        item.status === 'Aprovado' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
-                        item.status === 'Defeito' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
-                      }`}>{item.status}</span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setEditando(item)} className="p-2 hover:bg-[#2f6eea]/20 text-[#2f6eea] rounded-lg transition-colors"><Pencil size={16} /></button>
-                        <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
+
+          <div className="bg-white/5 border border-white/10 p-6 rounded-3xl lg:col-span-2">
+             <div className="flex items-center gap-2 mb-6"><BarChart3 size={18} className="text-[#2f6eea]" /><h3 className="font-bold text-sm">Desempenho da Semana</h3></div>
+             <div className="flex items-end h-32 gap-3">
+                {ultimos7Dias.map((dia, idx) => (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                    <div className="w-full bg-emerald-500 rounded-t-md transition-all" style={{ height: `${(dia.aprovados / maxAprovados) * 100}%` }} />
+                    <span className="text-[9px] font-bold text-slate-500">{dia.label}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+             </div>
           </div>
+        </div>
+
+        {/* TABELA DE REGISTROS */}
+        <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-md">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white/5 text-[10px] uppercase text-slate-500 font-black tracking-widest">
+              <tr>
+                <th className="px-6 py-4">Data</th>
+                <th className="px-6 py-4">Modelo</th>
+                <th className="px-6 py-4">S/N</th>
+                <th className="px-6 py-4">Qtd</th>
+                <th className="px-6 py-4">Técnico</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {dadosFiltrados.slice(0, 20).map((item) => (
+                <tr key={item.id} className="hover:bg-white/[0.03] transition-colors">
+                  <td className="px-6 py-4 text-slate-400">{new Date(item.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-6 py-4 font-bold uppercase">{item.modelo}</td>
+                  <td className="px-6 py-4 font-mono text-[11px] text-blue-400">{item.serial_number || '---'}</td>
+                  <td className="px-6 py-4 font-black">{item.quantidade}</td>
+                  <td className="px-6 py-4 text-slate-300">{item.profiles?.nome}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border ${item.status === 'Aprovado' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{item.status}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setEditando(item)} className="text-blue-400 p-1"><Pencil size={16} /></button>
+                      <button onClick={() => handleDelete(item.id)} className="text-red-400 p-1"><Trash2 size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
       </div>
 
       {/* MODAL DE EDIÇÃO */}
       {editando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-[#070b3f] w-full max-w-sm rounded-3xl border border-white/10 p-6 space-y-6 shadow-2xl my-auto">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black uppercase tracking-widest text-sm">Editar Registro</h3>
-              <button onClick={() => setEditando(null)} className="text-slate-500 hover:text-white"><X size={20} /></button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#070b3f] w-full max-w-sm rounded-3xl border border-white/10 p-6 space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center"><h3 className="font-black uppercase text-sm">Editar Registro</h3><button onClick={() => setEditando(null)}><X size={20} /></button></div>
             <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Modelo</label>
-                <input type="text" value={editando.modelo} onChange={(e) => setEditando({...editando, modelo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] uppercase font-bold" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Serial Number (S/N)</label>
-                <input type="text" value={editando.serial_number || ''} onChange={(e) => setEditando({...editando, serial_number: e.target.value})} placeholder="Vazio" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] uppercase font-mono" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Obs / Defeito</label>
-                <input type="text" value={editando.defeito_relatado || ''} onChange={(e) => setEditando({...editando, defeito_relatado: e.target.value})} placeholder="Sem observação" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-normal" />
-              </div>
+              <input type="text" value={editando.modelo} onChange={(e) => setEditando({...editando, modelo: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none uppercase font-bold" />
+              <input type="text" value={editando.serial_number || ''} onChange={(e) => setEditando({...editando, serial_number: e.target.value})} placeholder="S/N" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none font-mono" />
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd.</label>
-                  <input type="number" value={editando.quantidade} onChange={(e) => setEditando({...editando, quantidade: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-black" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Status</label>
-                  <select value={editando.status} onChange={(e) => setEditando({...editando, status: e.target.value as any})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#2f6eea] font-bold">
-                    <option value="Aprovado">Aprovado</option>
-                    <option value="Defeito">Defeito</option>
-                    <option value="Sucata">Sucata</option>
-                  </select>
-                </div>
+                <input type="number" value={editando.quantidade} onChange={(e) => setEditando({...editando, quantidade: Number(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none font-black" />
+                <select value={editando.status} onChange={(e) => setEditando({...editando, status: e.target.value as any})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none font-bold">
+                  <option value="Aprovado">Aprovado</option><option value="Defeito">Defeito</option><option value="Sucata">Sucata</option>
+                </select>
               </div>
             </div>
-            <button onClick={handleUpdate} disabled={salvando} className="w-full bg-[#2f6eea] hover:bg-blue-600 py-4 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
-              {salvando ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> SALVAR ALTERAÇÕES</>}
-            </button>
+            <button onClick={handleUpdate} disabled={salvando} className="w-full bg-blue-600 py-4 rounded-xl font-black text-sm">{salvando ? 'Salvando...' : 'Salvar Alterações'}</button>
           </div>
         </div>
       )}

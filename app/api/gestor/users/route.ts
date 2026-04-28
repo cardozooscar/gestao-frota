@@ -5,7 +5,8 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, nome, username, email, role, approved, active, created_at')
+      // Adicionado 'meta_diaria' no select
+      .select('id, nome, username, email, role, approved, active, created_at, meta_diaria')
       .order('nome', { ascending: true })
 
     if (error) {
@@ -66,6 +67,20 @@ export async function PATCH(req: NextRequest) {
       const { error } = await supabaseAdmin
         .from('profiles')
         .update({ role: value })
+        .eq('id', userId)
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true })
+    }
+
+    // NOVA AÇÃO: Atualizar a meta diária
+    if (action === 'meta_diaria') {
+      const { error } = await supabaseAdmin
+        .from('profiles')
+        .update({ meta_diaria: Number(value) })
         .eq('id', userId)
 
       if (error) {
