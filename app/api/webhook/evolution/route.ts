@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
+// ==========================================
+// CONFIGURAÇÕES DE GRUPOS
+// ==========================================
+const GRUPO_MONITORAMENTO = '120363407723567222@g.us';
+const GRUPO_FROTA = '120363426820224513@g.us';
+
+// URL do bot de monitoramento na VM
+const BOT_MONITORAMENTO_URL = process.env.BOT_MONITORAMENTO_URL; // ex: http://IP_DA_VM:3002/webhook
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -12,6 +21,38 @@ export async function POST(request: Request) {
 
     if (body.data?.key?.fromMe) return NextResponse.json({ success: true });
 
+    const remoteJid = body.data?.key?.remoteJid || '';
+
+    // ==========================================
+    // ROTEAMENTO POR GRUPO
+    // ==========================================
+
+    // Grupo de monitoramento → encaminha para a VM
+    if (remoteJid === GRUPO_MONITORAMENTO) {
+      if (!BOT_MONITORAMENTO_URL) {
+        console.error('BOT_MONITORAMENTO_URL não configurada');
+        return NextResponse.json({ success: true });
+      }
+
+      await fetch(BOT_MONITORAMENTO_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Grupo de frota → processa localmente
+    if (remoteJid !== GRUPO_FROTA) {
+      // Ignora mensagens de outros grupos/contatos
+      return NextResponse.json({ success: true });
+    }
+
+    // ==========================================
+    // LÓGICA DO BOT DE FROTA (código original)
+    // ==========================================
+
     const rawText = messageInfo.conversation || messageInfo.extendedTextMessage?.text || '';
     const textoMensagem = rawText.trim().toUpperCase();
     const numeroRemetente = body.data?.key?.remoteJid;
@@ -19,9 +60,6 @@ export async function POST(request: Request) {
     const textoLimpo = textoMensagem.replace(/[^A-Z0-9]/g, '');
     const isPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(textoLimpo);
 
-    // ==========================================
-    // COMANDO 1: /PLACAS (Lista todos os veículos)
-    // ==========================================
     if (textoMensagem === '/PLACAS') {
       const { data: veiculos } = await supabaseAdmin
         .from('vehicles')
@@ -43,10 +81,9 @@ export async function POST(request: Request) {
 
       veiculos.forEach(v => {
         const tecnicosDoCarro = vinculos?.filter(vin => vin.vehicle_id === v.id) || [];
-        const nomes = tecnicosDoCarro.length > 0 
-          ? tecnicosDoCarro.map((t: any) => t.profiles?.nome).join(' e ') 
+        const nomes = tecnicosDoCarro.length > 0
+          ? tecnicosDoCarro.map((t: any) => t.profiles?.nome).join(' e ')
           : 'Livre / No Pátio';
-
         listaTexto += `🚗 *${v.placa}* (${v.modelo || 'S/M'})\n👤 ${nomes}\n\n`;
       });
 
@@ -56,11 +93,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // ==========================================
-    // COMANDO 2: DIGITOU UMA PLACA (Dossiê com Link)
-    // ==========================================
     if (isPlaca) {
-      const placaBuscada = textoLimpo; 
+      const placaBuscada = textoLimpo;
 
       const { data: veiculo } = await supabaseAdmin
         .from('vehicles')
@@ -79,11 +113,10 @@ export async function POST(request: Request) {
         .eq('vehicle_id', veiculo.id)
         .is('ended_at', null);
 
-      const nomesTecnicos = vinculos && vinculos.length > 0 
-        ? vinculos.map((v: any) => v.profiles?.nome).join(' e ') 
+      const nomesTecnicos = vinculos && vinculos.length > 0
+        ? vinculos.map((v: any) => v.profiles?.nome).join(' e ')
         : 'Nenhum técnico vinculado';
 
-      // 🔥 ADICIONAMOS O 'id' AQUI NA BUSCA DA INSPEÇÃO
       const { data: inspecao } = await supabaseAdmin
         .from('inspections')
         .select('id, inspection_date, odometer')
@@ -93,22 +126,26 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       const statusCarro = veiculo.ativo ? '✅ ATIVO' : '⛔ INATIVO';
-      const dataVistoria = inspecao?.inspection_date ? new Date(inspecao.inspection_date).toLocaleDateString('pt-BR') : 'Sem registro';
-      const kmAtual = inspecao?.odometer ? `${inspecao.odometer.toLocaleString('pt-BR')} km` : 'Sem registro';
+      const dataVistoria = inspecao?.inspection_date
+        ? new Date(inspecao.inspection_date).toLocaleDateString('pt-BR')
+        : 'Sem registro';
+      const kmAtual = inspecao?.odometer
+        ? `${inspecao.odometer.toLocaleString('pt-BR')} km`
+        : 'Sem registro';
 
-      // 🔥 MONTAMOS O LINK DIRETO PARA A INSPEÇÃO/VEÍCULO (Ajuste o domínio e a rota)
-      const linkVistoria = inspecao?.id 
-        ? `\n\n🔗 *Ver detalhes da vistoria:*\nhttps://gestaofrotafibranet.vercel.app/gestor/veiculos/${veiculo.id}` 
+      const linkVistoria = inspecao?.id
+        ? `\n\n🔗 *Ver detalhes da vistoria:*\nhttps://gestaofrotafibranet.vercel.app/gestor/veiculos/${veiculo.id}`
         : '';
 
-      const resposta = `🤖 *DOSSIÊ DO VEÍCULO* 🤖\n\n` +
+      const resposta =
+        `🤖 *DOSSIÊ DO VEÍCULO* 🤖\n\n` +
         `🚗 *Placa:* ${veiculo.placa}\n` +
         `🏷️ *Modelo:* ${veiculo.modelo || 'Não informado'}\n` +
         `⚙️ *Status:* ${statusCarro}\n` +
         `👥 *Em uso por:* ${nomesTecnicos}\n` +
         `📅 *Última Vistoria:* ${dataVistoria}\n` +
         `🛣️ *KM Atual:* ${kmAtual}` +
-        linkVistoria; // Acoplamos o link no final da mensagem
+        linkVistoria;
 
       await enviarResposta(numeroRemetente, resposta);
       return NextResponse.json({ success: true });
@@ -122,19 +159,14 @@ export async function POST(request: Request) {
   }
 }
 
-// Função de disparo para o Evolution API
 async function enviarResposta(numeroJid: string, texto: string) {
-  const url = `${process.env.EVOLUTION_API_URL}/message/sendText/zabbix-alert`; // ⚠️ COLOQUE O NOME DA SUA INSTÂNCIA AQUI
+  const url = `${process.env.EVOLUTION_API_URL}/message/sendText/zabbix-alert`;
   const apiKey = process.env.EVOLUTION_API_KEY;
-
   if (!url || !apiKey) return;
 
   await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': apiKey },
-    body: JSON.stringify({
-      number: numeroJid,
-      text: texto
-    })
+    body: JSON.stringify({ number: numeroJid, text: texto }),
   });
 }
