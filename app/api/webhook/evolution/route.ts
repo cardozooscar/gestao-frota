@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 // ==========================================
 const GRUPO_MONITORAMENTO = '120363407723567222@g.us';
 const GRUPO_FROTA = '120363426820224513@g.us';
+const GRUPO_CONSUMO = '120363409880692690@g.us'; // Novo grupo para os NE40
 
 // URL do bot de monitoramento na VM
 const BOT_MONITORAMENTO_URL = process.env.BOT_MONITORAMENTO_URL; // ex: http://IP_DA_VM:3002/webhook
@@ -27,8 +28,8 @@ export async function POST(request: Request) {
     // ROTEAMENTO POR GRUPO
     // ==========================================
 
-    // Grupo de monitoramento → encaminha para a VM
-    if (remoteJid === GRUPO_MONITORAMENTO) {
+    // Grupo de monitoramento e o Novo Grupo de Consumo → encaminha para a VM
+    if (remoteJid === GRUPO_MONITORAMENTO || remoteJid === GRUPO_CONSUMO) {
       if (!BOT_MONITORAMENTO_URL) {
         console.error('BOT_MONITORAMENTO_URL não configurada');
         return NextResponse.json({ success: true });
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     // ==========================================
-    // LÓGICA DO BOT DE FROTA (código original)
+    // LÓGICA DO BOT DE FROTA (código original mantido)
     // ==========================================
 
     const rawText = messageInfo.conversation || messageInfo.extendedTextMessage?.text || '';
